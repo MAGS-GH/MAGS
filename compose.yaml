@@ -1,0 +1,23 @@
+# MAGS — Docker Compose (alle tjenester samlet)
+# Brug: kopier .env.example til .env i roden, kør: docker compose up -d --build
+# Tilføj flere services (app, auth, …) som egne entries med samme network.
+
+name: mags
+
+services:
+  marketing:
+    build:
+      context: ./site
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BOOKING_URL: ${NEXT_PUBLIC_BOOKING_URL:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+    container_name: mags-marketing
+    ports:
+      - "${MARKETING_PORT:-3000}:3000"
+    restart: unless-stopped
+    # Senere: depends_on, env_file, labels, osv.
+
+networks:
+  default:
+    name: mags_net

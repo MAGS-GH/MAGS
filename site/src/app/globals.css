@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fafafa;
+  --foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #0052ff;
+  --accent-secondary: #4d7cff;
+  --accent-foreground: #ffffff;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --ring: #0052ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-calistoga), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px rgb(0 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px rgb(0 0 0 / 0.1);
+  --shadow-accent: 0 4px 14px rgb(0 82 255 / 0.25);
+  --shadow-accent-lg: 0 8px 24px rgb(0 82 255 / 0.35);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@utility gradient-text {
+  background: linear-gradient(to right, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility dot-pattern {
+  background-image: radial-gradient(
+    circle,
+    rgb(255 255 255 / 1) 1px,
+    transparent 1px
+  );
+  background-size: 32px 32px;
+}
+
+@utility motion-safe-transition {
+  @media (prefers-reduced-motion: no-preference) {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-duration: 200ms;
+  }
+}
