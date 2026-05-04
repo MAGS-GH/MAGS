@@ -1,20 +1,44 @@
 # Docker build fejlsøgning
 
+## Hvordan afhængigheder installeres
+
+**Bun** (`oven/bun`) installerer fra **`bun.lock`** i et separat build-trin. Det undgår typisk **npm**-fejlen *Exit handler never called* og lange/hængende `npm ci`-kørsler under **Docker Desktop på Windows**.
+
+Når du ændrer `package.json` / npm-afhængigheder lokalt: kør i `site/`:
+
+```bash
+npm install
+bun install
+```
+
+…så `package-lock.json` og **`bun.lock`** matcher (commit begge).
+
 ## Første build tager lang tid
 
-Trin **`npm ci (forsøg 1/6)`** kan godt køre **5–15 minutter** første gang (mange pakker + download). Det er normalt. Efterfølgende builds er hurtigere takket være BuildKit **npm-cache** i Dockerfile.
+Første gang hentes **`oven/bun`**- og **`node`**-images plus alle pakker — **10–20 minutter** på langsom forbindelse er ikke unormalt. Senere builds er hurtigere (BuildKit **bun-cache**).
 
-## `npm error Exit handler never called`
+## Cursor / IDE-task stopper med exit 1 efter ~1 minut
 
-Ses ofte med **npm 10** under **Docker Desktop** (især Windows), især ved lange installs. Dockerfile’en gentager `npm ci` op til 6 gange med stigende pause — det løser mange midlertidige fejl.
+Nogle editor-tasks **afbryder** lange Docker-builds. Kør i stedet i en almindelig terminal:
 
-Hvis det fortsætter: giv Docker **mere RAM** (Settings → Resources) og prøv igen.
+```bash
+docker compose build --progress=plain marketing
+docker compose up -d
+```
 
-## `EAI_AGAIN` / `getaddrinfo` mod registry.npmjs.org
+## `npm error Exit handler never called` (kun hvis du bygger med npm i Docker)
 
-Build-containeren kan ikke slå DNS op eller nå npm-registry.
+Ikke længere standard i dette repo (Bun bruges til install). Hvis du skifter Dockerfile tilbage til `npm ci`: se gamle noter om fetch-retries og DNS nedenfor.
 
-1. **Docker Desktop → Settings → Docker Engine** — tilføj f.eks.:
+## `ConnectionRefused` / `FailedToOpenSocket` eller `EAI_AGAIN` mod registry
+
+Typisk under **`bun install`** eller **`npm ci`**: **ConnectionRefused downloading tarball …**, **FailedToOpenSocket**, eller **getaddrinfo EAI_AGAIN**. Det betyder at build-containeren **ikke får stabil forbindelse til registry.npmjs.org** (DNS, firewall, VPN, proxy eller ustabil linje). Det er **miljø-/netværksproblem**, ikke applikationskode.
+
+**Hvis install kører i mange timer:** afbryd (`Ctrl+C`), ret netværk, byg igen — undgå at lade den gentage fejl i timevis.
+
+Prøv i rækkefølge:
+
+1. **Docker Desktop → Settings → Docker Engine** — merge med din eksisterende JSON og tilføj evt.:
 
    ```json
    {
@@ -24,9 +48,13 @@ Build-containeren kan ikke slå DNS op eller nå npm-registry.
 
    Gem og **Restart** Docker.
 
-2. Slå **VPN** midlertidigt fra, eller tilføj undtagelse for Docker.
+2. Slå **VPN** fra midlertidigt, eller undtag **Docker Desktop**.
 
-3. På corporate netværk: bekræft at proxy ikke blokerer `registry.npmjs.org`.
+3. **Windows Firewall**: tillad **Docker Desktop** / backend-processen.
+
+4. **Corporate netværk / proxy**: konfigurer proxy i Docker Desktop eller npm-registry hos IT.
+
+5. Byg fra **WSL2**-terminal hvis Docker på Windows netop fejler udadgående trafik.
 
 ## Mere log
 
