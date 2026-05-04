@@ -40,13 +40,6 @@ export function SiteFooter() {
             <p className="font-medium text-foreground">{siteConfig.legalName}</p>
             <p>CVR {siteConfig.cvr}</p>
             <p>{siteConfig.nace}</p>
-            <p className="pt-2">
-              {siteConfig.addressLines.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </p>
             <p className="pt-2 text-xs">
               Fuldt ansvarlig deltager: {siteConfig.owner}
             </p>

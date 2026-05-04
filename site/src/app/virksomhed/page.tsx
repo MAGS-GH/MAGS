@@ -56,7 +56,7 @@ export default function VirksomhedPage() {
               </div>
               <div>
                 <dt className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
-                  NACE-branche
+                  Kategori
                 </dt>
                 <dd className="mt-2 text-lg text-foreground">
                   {siteConfig.nace}
@@ -68,18 +68,6 @@ export default function VirksomhedPage() {
                 </dt>
                 <dd className="mt-2 text-lg text-foreground">
                   {siteConfig.owner}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
-                  Adresse
-                </dt>
-                <dd className="mt-2 text-lg text-foreground">
-                  {siteConfig.addressLines.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
-                  ))}
                 </dd>
               </div>
             </dl>

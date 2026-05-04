@@ -99,7 +99,7 @@ export function Hero() {
               <span className="font-medium text-foreground">
                 {siteConfig.ownerShort}
               </span>
-              — computerprogrammering (NACE {siteConfig.nace.split(" ")[0]}).
+              {` — computerprogrammering (kategori ${siteConfig.nace.split(" ")[0]}).`}
             </motion.p>
           </motion.div>
           <HeroGraphic />

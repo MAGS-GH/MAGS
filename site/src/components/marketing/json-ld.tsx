@@ -11,13 +11,6 @@ export function JsonLdOrganization() {
       name: "CVR",
       value: siteConfig.cvr,
     },
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: siteConfig.addressLines.slice(0, 2).join(", "),
-      addressLocality: "Viborg",
-      postalCode: "8800",
-      addressCountry: "DK",
-    },
     founder: {
       "@type": "Person",
       name: siteConfig.owner,

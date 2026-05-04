@@ -2,11 +2,6 @@ export const siteConfig = {
   companyName: "MAGS Solutions",
   legalName: "MAGS Solutions",
   cvr: "46436490",
-  addressLines: [
-    "C/O Mathias Gaardsdal Steenberg",
-    "Skovgaardsvej 4 A",
-    "8800 Viborg",
-  ],
   nace: "621000 Computerprogrammering",
   owner: "Mathias Gaardsdal Steenberg",
   ownerShort: "Mathias Gaardsdal Steenberg",
