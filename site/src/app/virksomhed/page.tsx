@@ -56,14 +56,6 @@ export default function VirksomhedPage() {
               </div>
               <div>
                 <dt className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
-                  Kategori
-                </dt>
-                <dd className="mt-2 text-lg text-foreground">
-                  {siteConfig.nace}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">
                   Fuldt ansvarlig deltager
                 </dt>
                 <dd className="mt-2 text-lg text-foreground">

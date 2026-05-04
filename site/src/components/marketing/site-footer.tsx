@@ -39,7 +39,6 @@ export function SiteFooter() {
             </p>
             <p className="font-medium text-foreground">{siteConfig.legalName}</p>
             <p>CVR {siteConfig.cvr}</p>
-            <p>{siteConfig.nace}</p>
             <p className="pt-2 text-xs">
               Fuldt ansvarlig deltager: {siteConfig.owner}
             </p>

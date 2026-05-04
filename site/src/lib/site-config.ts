@@ -2,7 +2,6 @@ export const siteConfig = {
   companyName: "MAGS Solutions",
   legalName: "MAGS Solutions",
   cvr: "46436490",
-  nace: "621000 Computerprogrammering",
   owner: "Mathias Gaardsdal Steenberg",
   ownerShort: "Mathias Gaardsdal Steenberg",
   domain: "https://mags.dk",

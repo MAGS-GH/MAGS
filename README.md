@@ -40,4 +40,4 @@ Lokal udvikling uden Docker: `cd site && npm run dev` som før.
 
 ## Virksomhed
 
-**MAGS Solutions** · CVR 46436490 · enkeltmandsvirksomhed · NACE 621000.
+**MAGS Solutions** · CVR 46436490 · enkeltmandsvirksomhed.
