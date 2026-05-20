@@ -47,7 +47,7 @@ Alternativt enkelt image fra `site/`:
 cd site
 docker build -t mags-marketing \
   --build-arg NEXT_PUBLIC_BOOKING_URL="https://..." \
-  --build-arg NEXT_PUBLIC_CONTACT_EMAIL="kontakt@mags.dk" .
+  --build-arg NEXT_PUBLIC_CONTACT_EMAIL="mags@mags.dk" .
 docker run -p 3000:3000 mags-marketing
 ```
 
