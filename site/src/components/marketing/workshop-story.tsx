@@ -70,10 +70,9 @@ export function WorkshopStory() {
     const draw = () => {
       animationFrame = 0;
       if (document.hidden) return;
-      const firstChapter = sections.current[0];
-      const trigger = firstChapter ? Number.parseFloat(getComputedStyle(firstChapter).scrollMarginTop) : 0;
+      const trigger = stageElement.getBoundingClientRect().top;
       const stops = [
-        { position: Math.min(trigger, introElement.getBoundingClientRect().top + 55), progress: 0 },
+        { position: introElement.getBoundingClientRect().top, progress: 0 },
         ...chapters.map((chapter, index) => ({
           position: sections.current[index]?.getBoundingClientRect().top ?? Infinity,
           progress: chapter.progress,
@@ -90,16 +89,13 @@ export function WorkshopStory() {
       let value = from.progress;
       if (to && Number.isFinite(to.position)) {
         const distance = to.position - from.position;
-        const anticipation = current === 0 ? Math.min(290, Math.max(0, distance * 0.45)) : 0;
-        const start = from.position + anticipation;
+        // Give each chapter time to be read before the camera takes off again.
+        const start = from.position + distance * (current === 0 ? 0 : 0.33);
         const fraction = Math.max(0, Math.min(1, (trigger - start) / Math.max(1, to.position - start)));
         value += (to.progress - from.progress) * fraction;
       }
-      // Give the overview a little motion on the first scroll, including before the first chapter.
-      if (current === 0 && value < 0.07) {
-        value = Math.min(0.07, Math.max(0, (75 - introElement.getBoundingClientRect().top) / 1400));
-      }
       progress.current = value;
+      stageElement.dataset.progress = value.toFixed(3);
       if (current - 1 !== activeRef.current) {
         activeRef.current = current - 1;
         setActive(current - 1);
@@ -192,55 +188,55 @@ export function WorkshopStory() {
   const calendarStill = occupied ? "/workshop/aftale-optaget.webp" : frames[3];
 
   return (
-    <section className="workshop editorial-shell" aria-labelledby="forside-titel">
-      <div ref={intro} className="workshop-intro">
-        <div className="hero-rule" aria-hidden="true" />
-        <h1 id="forside-titel">Software der gør hverdagen lettere<span>.</span></h1>
-        <p>Jeg bygger webapps, kobler dine systemer sammen og holder løsningen i drift.</p>
-        <div className="workshop-cta">
-          <Link href={siteConfig.bookingUrl} className="primary-action">Book et gratis intromøde</Link>
-          <span>30 min. på Teams</span>
-        </div>
-        <div className="hero-links">
-          <a className="text-link" href="#forespoergsel">Se et eksempel <span aria-hidden="true">↓</span></a>
-          <a className="text-link" href="#ydelser">Gå til ydelser</a>
+    <section className="workshop" aria-labelledby="forside-titel">
+      <div ref={intro} className="workshop-intro editorial-shell">
+        <div className="workshop-opening-copy">
+          <div className="hero-rule" aria-hidden="true" />
+          <h1 id="forside-titel">Software der gør hverdagen lettere<span>.</span></h1>
+          <p>Jeg bygger webapps, kobler dine systemer sammen og holder løsningen i drift.</p>
+          <div className="workshop-cta">
+            <Link href={siteConfig.bookingUrl} className="primary-action">Book et gratis intromøde</Link>
+            <span>30 min. på Teams</span>
+          </div>
+          <div className="hero-links">
+            <a className="text-link" href="#forespoergsel">Følg automatiseringen <span aria-hidden="true">↓</span></a>
+            <a className="text-link" href="#ydelser">Gå til ydelser</a>
+          </div>
         </div>
       </div>
-
-      <figure ref={stage} className="workshop-stage" data-renderer={live ? "webgl" : "still"}>
+      <figure ref={stage} className="workshop-stage" data-renderer={live ? "webgl" : "still"} data-chapter={active}>
         <figcaption className="editorial-kicker">Eksempel på en automatisering</figcaption>
         <div className="workshop-visual" aria-hidden="true">
-          <Image src={frames[0]} alt="" fill sizes="(max-width: 790px) 100vw, 58vw" preload className="workshop-poster" />
+          <Image src={frames[0]} alt="" fill sizes="100vw" preload className="workshop-poster workshop-overview" />
           {!live && active >= 0 && (
-            <Image src={active === 2 ? calendarStill : frames[active + 1]} alt="" fill sizes="(max-width: 790px) 100vw, 58vw" className="workshop-poster" />
+            <Image src={active === 2 ? calendarStill : frames[active + 1]} alt="" fill sizes="100vw" className="workshop-poster workshop-frame" />
           )}
           <canvas ref={canvas} className="workshop-canvas" />
         </div>
-        <nav className="workshop-steps" aria-label="Trin i eksemplet">
-          {chapters.map(({ id, name }, index) => (
-            <a key={id} href={"#" + id} aria-current={active === index ? "step" : undefined}>
-              <span aria-hidden="true">{index + 1}.</span> {name}
-            </a>
-          ))}
-        </nav>
-        <button
-          type="button"
-          className="motion-toggle text-link"
-          onClick={() => { setLive(false); setStaticView(!staticView); }}
-          aria-pressed={staticView}
-        >
-          Vis stillbilleder
-        </button>
+        <div className="workshop-controls">
+          <nav className="workshop-steps" aria-label="Trin i eksemplet">
+            {chapters.map(({ id, name }, index) => (
+              <a key={id} href={"#" + id} aria-current={active === index ? "step" : undefined}>
+                <span aria-hidden="true">{index + 1}.</span> {name}
+              </a>
+            ))}
+          </nav>
+          <button
+            type="button"
+            className="motion-toggle text-link"
+            onClick={() => { setLive(false); setStaticView(!staticView); }}
+          >
+            {staticView ? "Vis 3D" : "Vis stillbilleder"}
+          </button>
+        </div>
       </figure>
-
       <div className="workshop-chapters">
         {chapters.map((chapter, index) => (
-          <article key={chapter.id} id={chapter.id} className="workshop-chapter" ref={(element) => { sections.current[index] = element; }}>
-            <div>
+          <article key={chapter.id} id={chapter.id} className="workshop-chapter editorial-shell" ref={(element) => { sections.current[index] = element; }}>
+            <div className="workshop-copy">
               <p className="editorial-kicker">0{index + 1} / {chapter.name}</p>
               <h2>{chapter.title}</h2>
               <p>{chapter.description}</p>
-              <Image src={chapter.id === "aftale" ? calendarStill : frames[index + 1]} alt="" width={735} height={603} sizes="100vw" className="workshop-inline-still" />
               {chapter.id === "aftale" && (
                 <fieldset className="workshop-scenario">
                   <legend>Prøv kalenderen</legend>

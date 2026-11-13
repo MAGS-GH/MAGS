@@ -2,12 +2,31 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { createWorkshopModel } from "./model";
 
-const cameraPoses: { at: number; target: [number, number, number]; offset: [number, number, number]; height: number }[] = [
-  { at: 0, target: [0.00, 0.30, 0.00], offset: [3.4, 5.6, 9.4], height: 9.24 },
-  { at: 0.22, target: [-2.35, 1.00, -0.53], offset: [1.6, 2.7, 7.6], height: 4.6 },
-  { at: 0.46, target: [0.10, 0.88, -0.90], offset: [2.5, 3.25, 7.2], height: 5.0 },
-  { at: 0.72, target: [-1.61, 0.89, 1.32], offset: [0.5, 2.4, 7.3], height: 4.15 },
-  { at: 1, target: [2.06, 0.60, 1.03], offset: [2.1, 3.3, 7.4], height: 4.4 },
+type Point = [number, number, number];
+type Frame = [number, number];
+
+const cameraPoses: {
+  at: number;
+  target: Point;
+  azimuth: number;
+  elevation: number;
+  distance: number;
+  frame: Frame;
+  portrait: Frame;
+}[] = [
+  { at: 0, target: [0, 0.45, 0], azimuth: 25, elevation: 30, distance: 15.3, frame: [0.67, 0.52], portrait: [0.51, 0.62] },
+  { at: 0.22, target: [-2.9, 1.20, -0.68], azimuth: -29, elevation: 17, distance: 6.0, frame: [0.62, 0.42], portrait: [0.49, 0.39] },
+  { at: 0.46, target: [0.32, 0.74, -0.97], azimuth: 37, elevation: 44, distance: 7.1, frame: [0.53, 0.40], portrait: [0.49, 0.40] },
+  { at: 0.72, target: [-1.73, 1.03, 1.66], azimuth: -19, elevation: 19, distance: 5.65, frame: [0.60, 0.41], portrait: [0.49, 0.38] },
+  { at: 1, target: [2.55, 0.68, 1.19], azimuth: 34, elevation: 34, distance: 6.75, frame: [0.54, 0.44], portrait: [0.49, 0.41] },
+];
+
+// Each transition adds a curved camera move between the readable chapter frames.
+const cameraArcs = [
+  { elevation: 13, distance: -1.6, roll: -7.5 },
+  { elevation: 20, distance: 1.2, roll: 8 },
+  { elevation: 12, distance: -1.15, roll: -7.5 },
+  { elevation: 13, distance: 1.4, roll: 8.5 },
 ];
 
 export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => void) {
@@ -24,7 +43,7 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-6, 6, 4, -4, 0.1, 60);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 150);
   const model = createWorkshopModel();
   scene.add(model.root);
 
@@ -62,7 +81,8 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
   scene.add(floor);
 
   const target = new THREE.Vector3();
-  const offset = new THREE.Vector3();
+  const nextTarget = new THREE.Vector3();
+  const orbit = new THREE.Spherical();
   let width = 0;
   let height = 0;
   let progress = 0;
@@ -79,23 +99,27 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
     const rightIndex = Math.max(1, cameraPoses.findIndex((pose) => pose.at >= progress));
     const left = cameraPoses[rightIndex - 1];
     const right = cameraPoses[rightIndex];
-    const local = THREE.MathUtils.smoothstep(progress, left.at, right.at);
-    target.set(...left.target).lerp(offset.set(...right.target), local);
-    offset.set(...left.offset);
-    offset.x = THREE.MathUtils.lerp(offset.x, right.offset[0], local);
-    offset.y = THREE.MathUtils.lerp(offset.y, right.offset[1], local);
-    offset.z = THREE.MathUtils.lerp(offset.z, right.offset[2], local);
-    camera.position.copy(target).add(offset);
-    camera.lookAt(target);
-
     const aspect = width / height;
-    const halfHeight = THREE.MathUtils.lerp(left.height, right.height, local) / 2
-      * Math.max(1, 1.3 / aspect);
-    camera.left = -halfHeight * aspect;
-    camera.right = halfHeight * aspect;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
-    camera.updateProjectionMatrix();
+    const fraction = (progress - left.at) / (right.at - left.at);
+    const local = THREE.MathUtils.smoothstep(fraction, 0, 1);
+    const sweep = Math.sin(Math.PI * fraction) ** 2;
+    const arc = cameraArcs[rightIndex - 1];
+    const lean = THREE.MathUtils.smoothstep(aspect, 0.65, 1.45);
+    const opening = 1 - THREE.MathUtils.smoothstep(progress, 0, cameraPoses[1].at);
+    const { lerp, degToRad } = THREE.MathUtils;
+    const elevation = lerp(left.elevation, right.elevation, local) + sweep * arc.elevation;
+    const distance = lerp(left.distance, right.distance, local) + sweep * arc.distance;
+    const portraitFit = Math.max(1, lerp(0.65, 1.04, opening) / aspect);
+    orbit.set(distance * portraitFit, degToRad(90 - elevation), degToRad(lerp(left.azimuth, right.azimuth, local)));
+    target.set(...left.target).lerp(nextTarget.set(...right.target), local);
+    camera.position.setFromSpherical(orbit).add(target);
+    camera.lookAt(target);
+    camera.rotateZ(degToRad(sweep * arc.roll * lerp(0.45, 1, lean)));
+
+    // Compose the shot around floating page text, which moves above the scene on portrait screens.
+    const focusX = lerp(lerp(left.portrait[0], right.portrait[0], local), lerp(left.frame[0], right.frame[0], local), lean);
+    const focusY = lerp(lerp(left.portrait[1], right.portrait[1], local), lerp(left.frame[1], right.frame[1], local), lean);
+    camera.setViewOffset(width, height, (0.5 - focusX) * width, (0.5 - focusY) * height, width, height);
 
     model.update(progress, displayedConflict);
     renderer.render(scene, camera);
@@ -108,7 +132,8 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
     if (nextWidth < 1 || nextHeight < 1 || (width === nextWidth && height === nextHeight)) return;
     width = nextWidth;
     height = nextHeight;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, width < 500 ? 1 : 1.5));
+    const pixelBudget = Math.sqrt(3_000_000 / (width * height));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelBudget, width < 500 ? 1 : 1.5));
     renderer.setSize(width, height, false);
     draw();
   }

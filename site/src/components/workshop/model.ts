@@ -281,30 +281,68 @@ export function createWorkshopModel() {
     const clip = cylinder(root, brass, 0.092, 0.21, point);
     clip.rotation.z = Math.PI / 2;
   }
-  const pulseGeometry = new THREE.SphereGeometry(0.095, 12, 8);
-  const lights = [0, 1, 2].map(() => mesh(pulseGeometry, cordLight, root, [0, 0, 0]));
+  const signalMaterial = new THREE.MeshBasicMaterial({ color: "#ffbd75", toneMapped: false });
+  materials.add(signalMaterial);
+  const trailMaterial = matte("#ff6b28", { emissive: "#ff571a", emissiveIntensity: 1.15 });
+  const pulseGeometry = new THREE.SphereGeometry(1, 12, 8);
+  const signalRoutes = [mainCord, outgoingCord, inviteCord, taskCord].map((curve) => ({
+    curve,
+    markers: Array.from({ length: 5 }, (_, index) => {
+      const marker = mesh(pulseGeometry, index === 0 ? signalMaterial : trailMaterial, root, [0, 0, 0]);
+      marker.castShadow = false;
+      marker.receiveShadow = false;
+      return marker;
+    }),
+  }));
+  const signalLight = new THREE.PointLight("#ff632c", 3.6, 2.2, 2);
+  const signalAxis = new THREE.Vector3(1, 0, 0);
+  const signalDirection = new THREE.Vector3();
+  root.add(signalLight);
 
   const limit = (value: number) => THREE.MathUtils.clamp(value, 0, 1);
   const interval = (value: number, from: number, to: number) => limit((value - from) / (to - from));
   const ease = (value: number, from: number, to: number) => THREE.MathUtils.smoothstep(value, from, to);
 
+  function moveSignal(routeIndex: number, progress: number, from: number, to: number) {
+    const { curve, markers } = signalRoutes[routeIndex];
+    const travel = (progress - from) / (to - from);
+    markers.forEach((marker, index) => {
+      const tail = travel - index * 0.054;
+      marker.visible = tail >= 0 && tail <= 1;
+      if (!marker.visible) return;
+      curve.getPointAt(tail, marker.position);
+      marker.position.y += 0.076;
+      curve.getTangentAt(tail, signalDirection);
+      marker.quaternion.setFromUnitVectors(signalAxis, signalDirection);
+      const scale = index === 0 ? 0.15 : 0.09 * (1 - index / markers.length);
+      marker.scale.set(scale * (index === 0 ? 1.65 : 1.25), scale, scale);
+    });
+    return markers[0];
+  }
+
   function update(progress: number, conflict: number) {
     const inquiryFocus = ease(progress, 0.03, 0.22) * (1 - ease(progress, 0.24, 0.40));
-    inquiryScreen.position.y = 1.52 + inquiryFocus * 0.095;
-    inquiryScreen.rotation.y = 0.14 * inquiryFocus;
+    inquiryScreen.position.y = 1.52 + inquiryFocus * 0.19;
+    inquiryScreen.rotation.y = 0.23 * inquiryFocus;
     const cardProgress = ease(progress, 0.11, 0.51);
+    const cardLift = Math.sin(Math.PI * interval(progress, 0.085, 0.23));
     inquiryCard.visible = progress >= 0.07 && progress < 0.52;
-    inquiryCard.position.copy(cardRoute.getPoint(cardProgress));
-    inquiryCard.rotation.set(0.55 * inquiryFocus, -0.2 + cardProgress * 0.45, Math.sin(cardProgress * Math.PI) * 0.1);
-    inquiryCard.scale.setScalar(Math.max(0.01, ease(progress, 0.07, 0.14) * (1 - ease(progress, 0.47, 0.52))));
-    gear.rotation.z = -progress * Math.PI * 4;
+    cardRoute.getPointAt(cardProgress, inquiryCard.position);
+    inquiryCard.position.y += 0.42 * cardLift;
+    inquiryCard.position.z += 0.31 * cardLift;
+    inquiryCard.rotation.set(0.87 * cardLift, -0.2 + cardProgress * 0.45, 0.3 * cardLift);
+    inquiryCard.scale.setScalar(Math.max(0.01, (1 + 0.38 * cardLift) * ease(progress, 0.07, 0.14) * (1 - ease(progress, 0.47, 0.52))));
+    const processing = ease(progress, 0.26, 0.53);
+    gear.rotation.z = -processing * Math.PI * 3;
     newCase.visible = progress >= 0.37;
     existingCustomer.visible = !newCase.visible;
-    folders[4].position.y = 0.61 + ease(progress, 0.39, 0.47) * (1 - ease(progress, 0.48, 0.63)) * 0.28;
+    const filingLift = ease(progress, 0.38, 0.46) * (1 - ease(progress, 0.49, 0.64));
+    folders[4].position.y = 0.61 + filingLift * 0.58;
+    folders[4].rotation.x = -0.12 + filingLift * 0.24;
 
     const calendarFocus = ease(progress, 0.48, 0.71) * (1 - ease(progress, 0.77, 0.92));
-    calendarScreen.rotation.set(-0.24 + calendarFocus * 0.16, calendarFocus * 0.07, 0);
-    calendarScreen.position.y = 1.03 + calendarFocus * 0.11;
+    calendarScreen.rotation.set(-0.35 + calendarFocus * 0.28, calendarFocus * 0.12, 0);
+    calendarScreen.position.y = 1.03 + calendarFocus * 0.20;
     const markScale = ease(progress, 0.52, 0.70);
     timeBlock.position.y = THREE.MathUtils.lerp(-0.188, -0.402, conflict);
     timeBlock.scale.setScalar(Math.max(0.001, markScale));
@@ -315,26 +353,24 @@ export function createWorkshopModel() {
     timeConflict.scale.setScalar(Math.max(0.001, markScale * conflict));
     bookedMark.scale.setScalar(Math.max(0.001, ease(progress, 0.65, 0.73) * 0.82));
 
-    const follow = ease(progress, 0.79, 1);
-    envelope.rotation.x = -0.30 + follow * 0.14;
-    envelope.position.y = 0.84 + follow * 0.24;
-    seal.scale.setScalar(0.68 + follow * 0.5);
-    task.rotation.x = -0.60 + follow * 0.41;
-    task.position.y = 0.64 + follow * 0.17;
+    const invitationSent = ease(progress, 0.85, 0.96);
+    const taskReady = ease(progress, 0.86, 0.99);
+    envelope.rotation.x = -0.45 + invitationSent * 0.39;
+    envelope.position.y = 0.84 + invitationSent * 0.37;
+    seal.scale.setScalar(0.58 + invitationSent * 0.64);
+    task.rotation.x = -0.69 + taskReady * 0.54;
+    task.position.y = 0.64 + taskReady * 0.28;
 
-    const mainPulse = lights[0];
-    const followPulse = interval(progress, 0.72, 0.85);
-    mainPulse.visible = progress < 0.85;
-    const primaryRoute = progress > 0.72 ? outgoingCord : mainCord;
-    mainPulse.position.copy(primaryRoute.getPoint(progress > 0.72 ? followPulse : interval(progress, 0, 0.72)));
-    mainPulse.position.y += 0.04;
-    const branchPulse = interval(progress, 0.85, 1);
-    [inviteCord, taskCord].forEach((route, index) => {
-      const pulse = lights[index + 1];
-      pulse.visible = progress >= 0.85;
-      pulse.position.copy(route.getPoint(branchPulse));
-      pulse.position.y += 0.045;
-    });
+    const intake = moveSignal(0, progress, 0.055, 0.72);
+    const outgoing = moveSignal(1, progress, 0.72, 0.83);
+    const invitation = moveSignal(2, progress, 0.83, 0.97);
+    moveSignal(3, progress, 0.83, 1);
+    const lead = intake.visible ? intake : outgoing.visible ? outgoing : invitation;
+    signalLight.visible = lead.visible;
+    if (lead.visible) {
+      signalLight.position.copy(lead.position);
+      signalLight.position.y += 0.23;
+    }
   }
 
   return {
