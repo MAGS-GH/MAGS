@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SectionScroll } from "@/components/marketing/section-scroll";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { WorkshopStory } from "@/components/marketing/workshop-story";
@@ -16,8 +17,9 @@ export default function Home() {
     <>
       <SiteHeader />
       <main id="indhold" className="flex-1">
+        <SectionScroll />
         <WorkshopStory />
-        <section id="ydelser" className="services-section">
+        <section id="ydelser" className="services-section" data-scroll-section tabIndex={-1}>
           <div className="editorial-shell editorial-section">
             <div className="workshop-handoff">
               <div className="section-intro">
@@ -41,7 +43,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="samarbejde" className="process-section">
+        <section id="samarbejde" className="process-section" data-scroll-section tabIndex={-1}>
           <div className="editorial-shell editorial-section process-grid">
             <div className="section-intro">
               <p className="editorial-kicker">Samarbejde</p>
@@ -55,7 +57,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="om" className="editorial-shell editorial-section about-grid">
+        <section id="om" className="editorial-shell editorial-section about-grid" data-scroll-section tabIndex={-1}>
           <div className="section-intro">
             <p className="editorial-kicker">Om MAGS Solutions</p>
             <h2>Hej, jeg hedder Mathias</h2>
@@ -66,7 +68,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="kontakt" className="contact-band">
+        <section id="kontakt" className="contact-band" data-scroll-section tabIndex={-1}>
           <div className="editorial-shell editorial-section">
             <h2>Hvad skal fylde mindre i jeres arbejdsdag?</h2>
             <p>Tag én konkret arbejdsgang med til et gratis intromøde. På 30 minutter ser vi på, hvor det giver mening at starte.</p>

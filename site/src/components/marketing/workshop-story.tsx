@@ -66,10 +66,14 @@ export function WorkshopStory() {
     let unavailable = false;
     let animationFrame = 0;
     let loadFrame = 0;
+    let lastFrame: number | null = null;
 
-    const draw = () => {
+    const draw = (now: number) => {
       animationFrame = 0;
-      if (document.hidden) return;
+      if (document.hidden) {
+        lastFrame = null;
+        return;
+      }
       const trigger = stageElement.getBoundingClientRect().top;
       const stops = [
         { position: introElement.getBoundingClientRect().top, progress: 0 },
@@ -90,18 +94,25 @@ export function WorkshopStory() {
       if (to && Number.isFinite(to.position)) {
         const distance = to.position - from.position;
         // Give each chapter time to be read before the camera takes off again.
-        const start = from.position + distance * (current === 0 ? 0 : 0.33);
+        const start = from.position + distance * (current === 0 ? 0 : 0.2);
         const fraction = Math.max(0, Math.min(1, (trigger - start) / Math.max(1, to.position - start)));
         value += (to.progress - from.progress) * fraction;
       }
-      progress.current = value;
-      stageElement.dataset.progress = value.toFixed(3);
-      stageElement.style.setProperty("--workshop-progress", String(value));
+      const animate = visible.current && scene.current && !reducedMotion.matches;
+      // Exponential damping gives fast wheel and touch gestures a short, frame-rate independent glide.
+      const elapsed = lastFrame === null ? 0 : Math.min(50, now - lastFrame);
+      const gap = value - progress.current;
+      const settling = animate && lastFrame !== null && Math.abs(gap) >= 0.001;
+      progress.current = settling ? progress.current + gap * -Math.expm1(-elapsed / 145) : value;
+      lastFrame = animate ? now : null;
+      stageElement.dataset.progress = progress.current.toFixed(3);
+      stageElement.style.setProperty("--workshop-progress", String(progress.current));
       if (current - 1 !== activeRef.current) {
         activeRef.current = current - 1;
         setActive(current - 1);
       }
-      if (visible.current) scene.current?.render(value, occupiedRef.current);
+      if (animate) scene.current?.render(progress.current, occupiedRef.current);
+      if (settling) schedule();
     };
 
     const schedule = () => {
@@ -124,7 +135,7 @@ export function WorkshopStory() {
           unavailable = true;
           stopScene();
         });
-        draw();
+        schedule();
         setLive(true);
       } catch {
         unavailable = true;
@@ -140,12 +151,14 @@ export function WorkshopStory() {
       schedule();
     };
     const refreshVisibility = () => {
+      lastFrame = null;
       if (!document.hidden) void startScene();
       schedule();
     };
 
     const intersection = new IntersectionObserver(([entry]) => {
       visible.current = entry.isIntersecting;
+      lastFrame = null;
       if (entry.isIntersecting) {
         void startScene();
         schedule();
@@ -234,7 +247,7 @@ export function WorkshopStory() {
       </figure>
       <div className="workshop-chapters">
         {chapters.map((chapter, index) => (
-          <article key={chapter.id} id={chapter.id} className="workshop-chapter editorial-shell" ref={(element) => { sections.current[index] = element; }}>
+          <article key={chapter.id} id={chapter.id} className="workshop-chapter editorial-shell" data-scroll-section tabIndex={-1} ref={(element) => { sections.current[index] = element; }}>
             <div className="workshop-copy">
               <p className="editorial-kicker">0{index + 1} / {chapter.name}</p>
               <h2>{chapter.title}</h2>
