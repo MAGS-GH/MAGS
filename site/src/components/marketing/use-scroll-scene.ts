@@ -43,6 +43,7 @@ export function useScrollScene<State>(
     let animationFrame = 0;
     let loadFrame = 0;
     let lastFrame: number | null = null;
+    let wasMoving = false;
 
     function draw(now: number) {
       animationFrame = 0;
@@ -80,7 +81,8 @@ export function useScrollScene<State>(
         value += (to.progress - from.progress) * fraction;
       }
       const canRender = visible && scene && !reducedMotion.matches;
-      const elapsed = lastFrame === null ? 0 : Math.min(50, now - lastFrame);
+      // Use wall time during a transition so slow frames do not prolong a chapter jump.
+      const elapsed = lastFrame !== null && wasMoving ? now - lastFrame : 16;
       const gap = value - progress.current;
       const settling = canRender && lastFrame !== null && Math.abs(gap) >= 0.001;
       progress.current = settling ? progress.current + gap * -Math.expm1(-elapsed / 145) : value;
@@ -91,12 +93,13 @@ export function useScrollScene<State>(
         activeRef.current = current - 1;
         setActive(current - 1);
       }
-      const sceneMoving = canRender && scene?.render(progress.current, sceneState.current, elapsed || 16);
+      const sceneMoving = canRender && scene?.render(progress.current, sceneState.current, elapsed);
       if (canRender && !ready) {
         ready = true;
         setLive(true);
       }
-      if (settling || sceneMoving) schedule();
+      wasMoving = Boolean(settling || sceneMoving);
+      if (wasMoving) schedule();
     }
 
     function schedule() {
