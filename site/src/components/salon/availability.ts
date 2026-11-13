@@ -19,26 +19,28 @@ type Stylist = {
   calendar: Record<SalonDay, Workday>;
 };
 
+const dayShift: Interval = [9 * 60, 16 * 60];
+
 export const stylists: readonly Stylist[] = [
   {
     id: "freja", name: "Freja", station: 0, treatments: ["klipning", "farve"],
     calendar: {
-      tirsdag: { shift: [540, 960], busy: [[585, 660], [705, 960]] },
-      onsdag: { shift: [600, 840], busy: [[600, 660], [705, 840]] },
+      tirsdag: { shift: dayShift, busy: [[870, 900]] },
+      onsdag: { shift: dayShift, busy: [] },
     },
   },
   {
     id: "noor", name: "Noor", station: 1, treatments: ["klipning", "farve"],
     calendar: {
-      tirsdag: { shift: [540, 960], busy: [[540, 660], [780, 960]] },
-      onsdag: { shift: [540, 900], busy: [[585, 900]] },
+      tirsdag: { shift: dayShift, busy: [[900, 930]] },
+      onsdag: { shift: dayShift, busy: [[870, 900]] },
     },
   },
   {
-    id: "elias", name: "Elias", station: 2, treatments: ["klipning"],
+    id: "elias", name: "Elias", station: 2, treatments: ["klipning", "farve"],
     calendar: {
-      tirsdag: { shift: [540, 900], busy: [[540, 600], [645, 900]] },
-      onsdag: { shift: [660, 900], busy: [[660, 720], [765, 900]] },
+      tirsdag: { shift: dayShift, busy: [] },
+      onsdag: { shift: dayShift, busy: [[900, 930]] },
     },
   },
 ];
