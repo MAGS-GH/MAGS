@@ -4,11 +4,13 @@ import { Reflector } from "three/addons/objects/Reflector.js";
 import { formatSalonTime, salonDays, salonTimeOptions, stylists, treatments } from "./availability";
 import type { SalonDisplayState } from "./display-state";
 
-const stationPositions = [-2.5, -0.15, 2.2];
+export const stationPositions = [-2.5, -0.15, 2.2] as const;
 const tabletWidth = 640;
 const tabletHeight = 448;
 const plateWidth = 480;
 const plateHeight = 144;
+const mirrorWidth = 1.244;
+const mirrorHeight = 1.585;
 
 type DisplayPhase = "welcome" | "treatment" | "stylist" | "time" | "review";
 type DisplayTone = "neutral" | "selected" | "confirmed" | "muted";
@@ -160,12 +162,12 @@ export async function createSalonModel() {
   const basic = (properties: THREE.MeshBasicMaterialParameters) => storeMaterial(new THREE.MeshBasicMaterial(properties));
 
   const textureLoader = new THREE.TextureLoader();
-  async function photograph(name: string, color: boolean, repeatX = 1, repeatY = 1) {
+  async function photograph(name: string, color: boolean, repeatX = 1, repeatY = 1, directory = "materials") {
     try {
-      const image = await textureLoader.loadAsync(`/salon/materials/${name}.webp`);
+      const image = await textureLoader.loadAsync(`/salon/${directory}/${name}.webp`);
       if (color) image.colorSpace = THREE.SRGBColorSpace;
       image.anisotropy = 8;
-      image.wrapS = image.wrapT = THREE.RepeatWrapping;
+      if (repeatX > 1 || repeatY > 1) image.wrapS = image.wrapT = THREE.RepeatWrapping;
       image.repeat.set(repeatX, repeatY);
       textures.push(image);
       return image;
@@ -175,13 +177,14 @@ export async function createSalonModel() {
   }
 
   // CC0 Poly Haven scans: oak_wood_planks, white_oak_veneer and beige_wall_001.
-  const [floorMap, floorNormal, oakMap, oakNormal, plasterMap, plasterNormal] = await Promise.all([
+  const [floorMap, floorNormal, oakMap, oakNormal, plasterMap, plasterNormal, portraits] = await Promise.all([
     photograph("floor-color", true, 3, 3.4),
     photograph("floor-normal", false, 3, 3.4),
     photograph("oak-color", true),
     photograph("oak-normal", false),
     photograph("plaster-color", true, 4, 2),
     photograph("plaster-normal", false, 4, 2),
+    Promise.all(stylists.map(({ id }) => photograph(id, true, 1, 1, "booking"))),
   ]);
   const fineGrain = texture(256, 256, (context) => {
     const random = noise(91823);
@@ -335,7 +338,7 @@ export async function createSalonModel() {
 
   const mirrorFrame = storeGeometry(arch(1.38, 1.72, .025));
   const mirrorHalo = storeGeometry(arch(1.294, 1.634, .022));
-  const mirrorFace = storeGeometry(arch(1.244, 1.585, 0));
+  const mirrorFace = storeGeometry(arch(mirrorWidth, mirrorHeight, 0));
   const fauxMirrorMap = texture(320, 400, (context) => {
     const wash = context.createLinearGradient(0, 0, 310, 400);
     wash.addColorStop(0, "#dddbd0");
@@ -354,7 +357,7 @@ export async function createSalonModel() {
   });
   const mirrorUvs = mirrorFace.getAttribute("uv");
   for (let index = 0; index < mirrorUvs.count; index++) {
-    mirrorUvs.setXY(index, mirrorUvs.getX(index) / 1.244 + .5, mirrorUvs.getY(index) / 1.585 + .5);
+    mirrorUvs.setXY(index, mirrorUvs.getX(index) / mirrorWidth + .5, mirrorUvs.getY(index) / mirrorHeight + .5);
   }
   const mirrorGlass = physical({ color: "#ddd8cb", map: fauxMirrorMap, metalness: .65, roughness: .11, envMapIntensity: .76, clearcoat: 1 });
   const mirrorLights: THREE.MeshBasicMaterial[] = [];
@@ -405,6 +408,7 @@ export async function createSalonModel() {
 
   const stations: THREE.Group[] = [];
   const mirroredFaces: THREE.Mesh[] = [];
+  const portraitFaces: (THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> | undefined)[] = [];
   for (const [index, x] of stationPositions.entries()) {
     const station = group(root, x, 0, -3.09);
     stations.push(station);
@@ -414,6 +418,18 @@ export async function createSalonModel() {
     mesh(mirrorHalo, halo, station, 0, 1.93, .026, false);
     const face = mesh(mirrorFace, mirrorGlass, station, 0, 1.93, .051, false);
     mirroredFaces.push(face);
+    const image = portraits[index];
+    if (image) {
+      // Cover the arched mirror with the centre of the square photograph.
+      image.repeat.x = mirrorWidth / mirrorHeight;
+      image.offset.x = (1 - image.repeat.x) / 2;
+      const material = basic({ map: image, color: "#fff7ed", toneMapped: false, transparent: true, opacity: 0, depthWrite: false });
+      const portrait = new THREE.Mesh(mirrorFace, material);
+      portrait.position.set(0, 1.93, .055);
+      portrait.visible = false;
+      portraitFaces[index] = portrait;
+      station.add(portrait);
+    }
     box(station, matteBlack, [.52, .17, .026], [0, 1.33, .066], .012);
     const plate = writableTexture(plateWidth, plateHeight);
     plates.push(plate);
@@ -436,6 +452,13 @@ export async function createSalonModel() {
   reflector.position.set(0, 1.93, .053);
   reflector.visible = false;
   stations[1].add(reflector);
+  let wideEnoughForReflection = false;
+
+  function updateReflection() {
+    const portraitCoversMirror = portraitFaces[1]?.material.opacity === 1;
+    reflector.visible = wideEnoughForReflection && !portraitCoversMirror;
+    mirroredFaces[1].visible = !reflector.visible && !portraitCoversMirror;
+  }
 
   const trolley = group(root, -3.44, 0, -1.99);
   const trolleyTray = standard({ color: "#3d3b31", metalness: .22, roughness: .61 });
@@ -624,6 +647,7 @@ export async function createSalonModel() {
     const phase = displayPhase(progress);
     refreshScreens(display, phase);
     const highlightedId = phase === "stylist" || phase === "review" ? display.slot?.stylistId : null;
+    const portraitId = phase === "stylist" ? highlightedId : null;
     const bookedId = phase === "review" && display.confirmed ? display.slot?.stylistId : null;
     let changing = false;
     const weight = -Math.expm1(-Math.max(0, elapsed) / 145);
@@ -636,7 +660,16 @@ export async function createSalonModel() {
       if (Math.abs(done - booked[index]) < .004) booked[index] = done;
       changing ||= current[index] !== active || booked[index] !== done;
       mirrorLights[index].color.copy(idleLight).lerp(selectedLight, current[index]).lerp(bookedLight, booked[index]);
+      const portrait = portraitFaces[index];
+      if (portrait) {
+        const target = portraitId === id ? 1 : 0;
+        const opacity = THREE.MathUtils.lerp(portrait.material.opacity, target, weight);
+        portrait.material.opacity = Math.abs(target - opacity) < .004 ? target : opacity;
+        portrait.visible = portrait.material.opacity > 0;
+        changing ||= portrait.material.opacity !== target;
+      }
     }
+    updateReflection();
     return changing;
   }
 
@@ -644,8 +677,8 @@ export async function createSalonModel() {
     root,
     update,
     resize(width: number) {
-      reflector.visible = width >= 920;
-      mirroredFaces[1].visible = !reflector.visible;
+      wideEnoughForReflection = width >= 920;
+      updateReflection();
     },
     dispose() {
       reflector.dispose();

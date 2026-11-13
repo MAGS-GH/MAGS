@@ -8,7 +8,7 @@ import { initialSalonDisplay } from "./display-state";
 const chapters = [
   { id: "behandling", name: "Behandling", progress: .22, title: "Hvad skal du have lavet?", description: "Skift behandling, og se varigheden på receptionens skærm." },
   { id: "tid", name: "Tid", progress: .46, title: "Hvornår passer det dig?", description: "Ledige tider hos alle frisører." },
-  { id: "frisoer", name: "Frisør", progress: .72, title: "Hvem skal tage din tid?", description: "Her er frisørerne, der kan tage din tid." },
+  { id: "frisoer", name: "Frisør", progress: .72, title: "Hvem skal tage din tid?", description: "Vælg en frisør, og se deres portræt i spejlet." },
   { id: "bekraeftelse", name: "Bekræftelse", progress: 1, title: "Aftalen i salonens kalender", description: "Se, hvad kunden får bekræftet, og hvor aftalen lander hos frisøren." },
 ] as const;
 
@@ -27,7 +27,7 @@ function SalonPoster({ name, opening = false }: { name: string; opening?: boolea
   return (
     <picture>
       <source media="(max-width: 790px)" srcSet={mobile.srcSet} sizes={mobile.sizes} />
-      <img {...desktop} alt="" loading={opening ? "eager" : "lazy"} fetchPriority={opening ? "high" : undefined} />
+      <img {...desktop} alt="" loading="eager" fetchPriority={opening ? "high" : undefined} />
     </picture>
   );
 }
@@ -37,6 +37,10 @@ export function SalonStory() {
     active, canvas, intro, live, sections, stage, staticView, unavailable, setSceneState, toggleStaticView,
   } = useScrollScene(chapters, loadSalon, initialSalonDisplay);
   const booking = useSalonBooking(setSceneState);
+  const chapterId = chapters[active]?.id;
+  const poster = chapterId === "frisoer" && booking.stylist
+    ? `frisoer-${booking.stylist.id}`
+    : posters[active + 1];
 
   return (
     <section className="workshop salon-story" aria-labelledby="salon-title">
@@ -49,10 +53,10 @@ export function SalonStory() {
         </div>
       </div>
 
-      <figure ref={stage} className="workshop-stage salon-stage" data-renderer={live ? "webgl" : "still"} data-chapter={active} data-salon-step={chapters[active]?.id ?? "start"}>
+      <figure ref={stage} className="workshop-stage salon-stage" data-renderer={live ? "webgl" : "still"} data-chapter={active} data-salon-step={chapterId ?? "start"}>
         <div className="workshop-visual salon-visual" aria-hidden="true">
           <SalonPoster name={posters[0]} opening />
-          {!live && active >= 0 && <SalonPoster name={posters[active + 1]} />}
+          {!live && active >= 0 && <SalonPoster name={poster} />}
           <canvas ref={canvas} className="workshop-canvas" />
         </div>
         <div className="workshop-controls salon-controls">

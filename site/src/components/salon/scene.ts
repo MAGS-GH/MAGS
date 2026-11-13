@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { stylists } from "./availability";
 import type { SalonDisplayState } from "./display-state";
-import { createSalonModel } from "./model";
+import { createSalonModel, stationPositions } from "./model";
 
 type Point = [number, number, number];
 type Shot = { at: number; position: Point; target: Point; fieldOfView: number; offset: number };
@@ -76,6 +77,8 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
   let lastProgress = -1;
   let lastDisplay: SalonDisplayState | null = null;
   let changing = false;
+  let stationBlend = 0;
+  let stationX = 0;
   let contextLost = false;
 
   function render(progress: number, display: SalonDisplayState, elapsed: number) {
@@ -93,33 +96,46 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
     }
 
     if (!resized && progress === lastProgress && display === lastDisplay && !changing) return false;
-    changing = model.update(display, progress, lastProgress < 0 ? 10000 : elapsed);
+    const firstFrame = lastProgress < 0;
+    const { lerp, smoothstep } = THREE.MathUtils;
+    const station = stylists.find(({ id }) => id === display.slot?.stylistId);
+    const desiredBlend = station && progress >= .59 && progress < .86 ? 1 : 0;
+    const desiredX = station ? stationPositions[station.station] : stationX;
+    const weight = firstFrame ? 1 : -Math.expm1(-elapsed / 190);
+    const nextBlend = Math.abs(stationBlend - desiredBlend) < .002 ? desiredBlend : lerp(stationBlend, desiredBlend, weight);
+    const nextX = stationBlend === 0 || Math.abs(stationX - desiredX) < .002 ? desiredX : lerp(stationX, desiredX, weight);
+    const stationCameraChanged = stationBlend !== nextBlend || stationX !== nextX;
+    stationBlend = nextBlend;
+    stationX = nextX;
+    const movingBetweenStations = stationBlend !== desiredBlend || (stationBlend > 0 && stationX !== desiredX);
+    const stationWeight = stationBlend * smoothstep(progress, .51, .72) * (1 - smoothstep(progress, .72, .89));
+    const changingMirror = model.update(display, progress, firstFrame ? 10000 : elapsed);
+    changing = movingBetweenStations || changingMirror;
     lastDisplay = display;
 
-    if (resized || progress !== lastProgress) {
+    if (resized || progress !== lastProgress || stationCameraChanged) {
       const index = Math.max(1, shots.findIndex(({ at }) => at >= progress));
       const from = shots[index - 1];
       const to = shots[index];
       const linear = (progress - from.at) / (to.at - from.at);
-      const amount = THREE.MathUtils.smoothstep(linear, 0, 1);
+      const amount = smoothstep(linear, 0, 1);
       const arc = Math.sin(linear * Math.PI) ** 2;
-      const { lerp } = THREE.MathUtils;
       const aspect = width / height;
       const wide = width > 790;
-      const framing = wide ? lerp(from.offset, to.offset, amount) : 0;
-      const staffWidening = wide ? 7 * (1 - THREE.MathUtils.smoothstep(Math.abs(progress - .72), 0, .25)) : 0;
-      const portraitFinale = wide ? 0 : THREE.MathUtils.smoothstep(progress, .72, 1);
-      const fieldOfView = lerp(from.fieldOfView, to.fieldOfView, amount) + staffWidening + portraitFinale * 5;
+      const framing = wide ? lerp(lerp(from.offset, to.offset, amount), .18, stationWeight) : 0;
+      const staffWidening = wide ? 7 * (1 - smoothstep(Math.abs(progress - .72), 0, .25)) : 0;
+      const portraitFinale = wide ? 0 : smoothstep(progress, .72, 1);
+      const fieldOfView = lerp(lerp(from.fieldOfView, to.fieldOfView, amount) + staffWidening + portraitFinale * 5, 44, stationWeight);
 
       camera.position.set(
-        lerp(from.position[0], to.position[0], amount) + arc * (index % 2 ? -.17 : .23),
-        lerp(from.position[1], to.position[1], amount) + arc * .09,
-        lerp(from.position[2], to.position[2], amount) + arc * .2 + portraitFinale * .65,
+        lerp(lerp(from.position[0], to.position[0], amount) + arc * (index % 2 ? -.17 : .23), stationX + .49, stationWeight),
+        lerp(lerp(from.position[1], to.position[1], amount) + arc * .09, 1.65, stationWeight),
+        lerp(lerp(from.position[2], to.position[2], amount) + arc * .2 + portraitFinale * .65, .57, stationWeight),
       );
       target.set(
-        lerp(from.target[0], to.target[0], amount) + portraitFinale * .4,
-        lerp(from.target[1], to.target[1], amount),
-        lerp(from.target[2], to.target[2], amount),
+        lerp(lerp(from.target[0], to.target[0], amount) + portraitFinale * .4, stationX, stationWeight),
+        lerp(lerp(from.target[1], to.target[1], amount), 1.48, stationWeight),
+        lerp(lerp(from.target[2], to.target[2], amount), -2.68, stationWeight),
       );
       camera.fov = aspect < 1.3 ? Math.min(64, fieldOfView + (1.3 - aspect) * 27) : fieldOfView;
       camera.lookAt(target);
