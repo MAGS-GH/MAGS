@@ -76,11 +76,17 @@ export function WorkshopStory() {
       }
       const trigger = stageElement.getBoundingClientRect().top;
       const stops = [
-        { position: introElement.getBoundingClientRect().top, progress: 0 },
-        ...chapters.map((chapter, index) => ({
-          position: sections.current[index]?.getBoundingClientRect().top ?? Infinity,
-          progress: chapter.progress,
-        })),
+        { position: introElement.getBoundingClientRect().top, progress: 0, hold: 0 },
+        ...chapters.map((chapter, index) => {
+          const section = sections.current[index];
+          const bounds = section?.getBoundingClientRect();
+          const frame = section?.firstElementChild?.getBoundingClientRect();
+          return {
+            position: bounds?.top ?? Infinity,
+            progress: chapter.progress,
+            hold: bounds && frame ? bounds.height - frame.height : 0,
+          };
+        }),
       ];
 
       let current = 0;
@@ -92,9 +98,8 @@ export function WorkshopStory() {
       const to = stops[current + 1];
       let value = from.progress;
       if (to && Number.isFinite(to.position)) {
-        const distance = to.position - from.position;
-        // Give each chapter time to be read before the camera takes off again.
-        const start = from.position + distance * (current === 0 ? 0 : 0.2);
+        // Keep the camera at the chapter pose while its copy is pinned.
+        const start = from.position + from.hold;
         const fraction = Math.max(0, Math.min(1, (trigger - start) / Math.max(1, to.position - start)));
         value += (to.progress - from.progress) * fraction;
       }
@@ -167,6 +172,9 @@ export function WorkshopStory() {
     intersection.observe(stageElement);
     const resize = new ResizeObserver(schedule);
     resize.observe(stageElement);
+    for (const section of sections.current) {
+      if (section) resize.observe(section);
+    }
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     document.addEventListener("visibilitychange", refreshVisibility);
@@ -196,7 +204,7 @@ export function WorkshopStory() {
   function selectScenario(nextOccupied: boolean) {
     setOccupied(nextOccupied);
     occupiedRef.current = nextOccupied;
-    if (visible.current && !document.hidden) scene.current?.render(Math.max(progress.current, 0.72), nextOccupied);
+    if (visible.current && !document.hidden) scene.current?.render(progress.current, nextOccupied);
   }
 
   const calendarStill = occupied ? "/workshop/aftale-optaget.webp" : frames[3];
@@ -248,26 +256,28 @@ export function WorkshopStory() {
       <div className="workshop-chapters">
         {chapters.map((chapter, index) => (
           <article key={chapter.id} id={chapter.id} className="workshop-chapter editorial-shell" data-scroll-section tabIndex={-1} ref={(element) => { sections.current[index] = element; }}>
-            <div className="workshop-copy">
-              <p className="editorial-kicker">0{index + 1} / {chapter.name}</p>
-              <h2>{chapter.title}</h2>
-              <p>{chapter.description}</p>
-              {chapter.id === "aftale" && (
-                <fieldset className="workshop-scenario">
-                  <legend>Prøv kalenderen</legend>
-                  <div>
-                    <button type="button" aria-pressed={!occupied} onClick={() => selectScenario(false)}>Tiden er ledig</button>
-                    <button type="button" aria-pressed={occupied} onClick={() => selectScenario(true)}>Tiden er optaget</button>
+            <div className="workshop-chapter-frame">
+              <div className="workshop-copy">
+                <p className="editorial-kicker">0{index + 1} / {chapter.name}</p>
+                <h2>{chapter.title}</h2>
+                <p>{chapter.description}</p>
+                {chapter.id === "aftale" && (
+                  <fieldset className="workshop-scenario">
+                    <legend>Prøv kalenderen</legend>
+                    <div>
+                      <button type="button" aria-pressed={!occupied} onClick={() => selectScenario(false)}>Tiden er ledig</button>
+                      <button type="button" aria-pressed={occupied} onClick={() => selectScenario(true)}>Tiden er optaget</button>
+                    </div>
+                    <p aria-live="polite">{occupied ? "Kl. 10.00 er optaget. Næste ledige tid, kl. 10.30, bliver valgt." : "Kl. 10.00 er ledig. Aftalen kan bookes med det samme."}</p>
+                  </fieldset>
+                )}
+                {chapter.id === "opfoelgning" && (
+                  <div className="workshop-end">
+                    <p>Hvad vil du gerne automatisere?</p>
+                    <Link className="primary-action" href={siteConfig.bookingUrl}>Book et gratis intromøde</Link>
                   </div>
-                  <p aria-live="polite">{occupied ? "Kl. 10.00 er optaget. Næste ledige tid, kl. 10.30, bliver valgt." : "Kl. 10.00 er ledig. Aftalen kan bookes med det samme."}</p>
-                </fieldset>
-              )}
-              {chapter.id === "opfoelgning" && (
-                <div className="workshop-end">
-                  <p>Hvad vil du gerne automatisere?</p>
-                  <Link className="primary-action" href={siteConfig.bookingUrl}>Book et gratis intromøde</Link>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </article>
         ))}
