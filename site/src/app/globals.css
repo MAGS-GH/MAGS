@@ -281,6 +281,8 @@
 }
 .workshop-chapter:nth-of-type(even) { justify-items: end; }
 .workshop-chapter:last-child { min-height: max(640px, 100svh); }
+.workshop-chapter:focus-visible { outline: none; }
+.workshop-chapter:focus-visible .workshop-copy { outline: 2px solid var(--ring); outline-offset: 4px; }
 .workshop-copy {
   align-self: end;
   pointer-events: auto;
@@ -293,6 +295,9 @@
 }
 .workshop-copy .editorial-kicker { display: flex; align-items: center; gap: .55rem; }
 .workshop-copy .editorial-kicker::before { content: ""; width: 1.15rem; height: 2px; background: var(--thread); }
+@media (min-width: 1100px) {
+  .workshop-chapter:last-child .workshop-copy { align-self: center; }
+}
 .workshop-chapter h2, .editorial-section h2 {
   font-family: var(--font-display);
   font-weight: 750;

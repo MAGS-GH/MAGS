@@ -306,9 +306,11 @@ export function createWorkshopModel() {
     }),
   }));
   const signalLight = new THREE.PointLight("#ff632c", 3.6, 2.2, 2);
+  const deliveryLight = new THREE.PointLight("#ffb36b", 0, 2.6, 2);
+  deliveryLight.position.set(2.85, 0.65, 1.15);
   const signalAxis = new THREE.Vector3(1, 0, 0);
   const signalDirection = new THREE.Vector3();
-  root.add(signalLight);
+  root.add(signalLight, deliveryLight);
 
   const limit = (value: number) => THREE.MathUtils.clamp(value, 0, 1);
   const interval = (value: number, from: number, to: number) => limit((value - from) / (to - from));
@@ -366,17 +368,18 @@ export function createWorkshopModel() {
 
     const invitationSent = ease(progress, 0.85, 0.96);
     const taskReady = ease(progress, 0.86, 0.99);
-    envelope.rotation.x = -0.45 + invitationSent * 0.39;
-    envelope.position.y = 0.84 + invitationSent * 0.37;
+    envelope.rotation.x = -0.45 + invitationSent * 0.53;
+    envelope.position.y = 0.84 + invitationSent * 0.64;
     seal.scale.setScalar(0.58 + invitationSent * 0.64);
     task.rotation.x = -0.69 + taskReady * 0.54;
-    task.position.y = 0.64 + taskReady * 0.28;
+    task.position.y = 0.64 + taskReady * 0.4;
+    deliveryLight.intensity = ease(progress, 0.9, 0.995) * 3.2;
 
     const intake = moveSignal(0, progress, 0.055, 0.72);
     const outgoing = moveSignal(1, progress, 0.72, 0.83);
-    const invitation = moveSignal(2, progress, 0.83, 0.97);
-    moveSignal(3, progress, 0.83, 1);
-    const lead = intake.visible ? intake : outgoing.visible ? outgoing : invitation;
+    const invitation = moveSignal(2, progress, 0.83, 0.95);
+    const taskSignal = moveSignal(3, progress, 0.83, 0.96);
+    const lead = intake.visible ? intake : outgoing.visible ? outgoing : invitation.visible ? invitation : taskSignal;
     signalLight.visible = lead.visible;
     if (lead.visible) {
       signalLight.position.copy(lead.position);

@@ -18,7 +18,8 @@ const cameraPoses: {
   { at: 0.22, target: [-2.9, 1.20, -0.68], azimuth: -29, elevation: 17, distance: 6.0, frame: [0.62, 0.42], portrait: [0.49, 0.39] },
   { at: 0.46, target: [0.32, 0.74, -0.97], azimuth: 37, elevation: 44, distance: 7.1, frame: [0.53, 0.40], portrait: [0.49, 0.40] },
   { at: 0.72, target: [-1.73, 1.03, 1.66], azimuth: -19, elevation: 19, distance: 5.65, frame: [0.60, 0.41], portrait: [0.49, 0.38] },
-  { at: 1, target: [2.55, 0.68, 1.19], azimuth: 34, elevation: 34, distance: 6.75, frame: [0.54, 0.44], portrait: [0.49, 0.41] },
+  { at: 0.86, target: [1.15, 0.62, 1.1], azimuth: 30, elevation: 39, distance: 8.6, frame: [0.48, 0.40], portrait: [0.49, 0.34] },
+  { at: 1, target: [0, 0.50, 0.18], azimuth: -13, elevation: 37, distance: 15.5, frame: [0.36, 0.46], portrait: [0.5, 0.29] },
 ];
 
 // Each transition adds a curved camera move between the readable chapter frames.
@@ -26,7 +27,8 @@ const cameraArcs = [
   { elevation: 13, distance: -1.6, roll: -7.5 },
   { elevation: 20, distance: 1.2, roll: 8 },
   { elevation: 12, distance: -1.15, roll: -7.5 },
-  { elevation: 13, distance: 1.4, roll: 8.5 },
+  { elevation: 9, distance: -0.65, roll: 6 },
+  { elevation: 7, distance: 0.25, roll: -3.5 },
 ];
 
 export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => void) {
@@ -111,10 +113,11 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
     const arc = cameraArcs[rightIndex - 1];
     const lean = THREE.MathUtils.smoothstep(aspect, 0.65, 1.45);
     const opening = 1 - THREE.MathUtils.smoothstep(progress, 0, cameraPoses[1].at);
+    const finale = THREE.MathUtils.smoothstep(progress, 0.86, 1);
     const { lerp, degToRad } = THREE.MathUtils;
     const elevation = lerp(left.elevation, right.elevation, local) + sweep * arc.elevation;
     const distance = lerp(left.distance, right.distance, local) + sweep * arc.distance;
-    const portraitFit = Math.max(1, lerp(0.65, 1.04, opening) / aspect);
+    const portraitFit = Math.max(1, lerp(0.65, 1.13, Math.max(opening, finale)) / aspect);
     orbit.set(distance * portraitFit, degToRad(90 - elevation), degToRad(lerp(left.azimuth, right.azimuth, local)));
     target.set(...left.target).lerp(nextTarget.set(...right.target), local);
     camera.position.setFromSpherical(orbit).add(target);
