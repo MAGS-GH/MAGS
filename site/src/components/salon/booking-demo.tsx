@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   formatSalonTime, salonAvailability, salonDays, stylists, treatments,
@@ -69,6 +70,27 @@ export function useSalonBooking(onSceneChange: (state: SalonDisplayState) => voi
 
 type Chapter = "behandling" | "frisoer" | "tid" | "bekraeftelse";
 
+function PhotoOption({ photo, name, detail, selected, onSelect }: {
+  photo: TreatmentId | StylistId;
+  name: string;
+  detail: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button className="salon-option salon-photo-option" type="button" aria-pressed={selected} onClick={onSelect}>
+      <span className="salon-option-photo">
+        <Image src={`/salon/booking/${photo}.webp`} alt="" fill sizes="(max-width: 420px) 42vw, 190px" />
+        {selected && <span className="salon-selection-mark" aria-hidden="true">✓</span>}
+      </span>
+      <span className="salon-option-label">
+        <span className="salon-option-name">{name}</span>
+        <span className="salon-option-detail">{detail}</span>
+      </span>
+    </button>
+  );
+}
+
 export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booking: ReturnType<typeof useSalonBooking> }) {
   const treatment = treatments[booking.treatment];
   const { slot } = booking;
@@ -78,12 +100,10 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
       <div className="salon-booking">
         <fieldset className="salon-options">
           <legend className="sr-only">Behandling</legend>
-          <div className="salon-option-grid">
+          <div className="salon-photo-grid salon-treatment-options">
             {(Object.keys(treatments) as TreatmentId[]).map((id) => (
-              <button className="salon-option" type="button" key={id} aria-pressed={booking.treatment === id} onClick={() => booking.selectTreatment(id)}>
-                <span className="salon-option-name">{treatments[id].name}</span>
-                <span className="salon-option-detail">{treatments[id].minutes} min.</span>
-              </button>
+              <PhotoOption key={id} photo={id} name={treatments[id].name} detail={`${treatments[id].minutes} min.`}
+                selected={booking.treatment === id} onSelect={() => booking.selectTreatment(id)} />
             ))}
           </div>
         </fieldset>
@@ -97,20 +117,17 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
       <div className="salon-booking">
         <fieldset className="salon-options">
           <legend className="sr-only">Frisør</legend>
-          <div className="salon-option-grid">
-            <button className="salon-option" type="button" aria-pressed={booking.stylistId === null} onClick={() => booking.selectStylist(null)}>
+          <button className="salon-option salon-auto-option" type="button" aria-pressed={booking.stylistId === null} onClick={() => booking.selectStylist(null)}>
+            <span className="salon-option-label">
               <span className="salon-option-name">Første ledige</span>
               <span className="salon-option-detail">Alle relevante frisører</span>
-            </button>
+            </span>
+            {booking.stylistId === null && <span className="salon-selection-mark" aria-hidden="true">✓</span>}
+          </button>
+          <div className="salon-photo-grid salon-stylist-options">
             {stylists.filter((stylist) => stylist.treatments.includes(booking.treatment)).map((stylist) => (
-              <button
-                className="salon-option" type="button" key={stylist.id}
-                aria-pressed={booking.stylistId === stylist.id}
-                onClick={() => booking.selectStylist(stylist.id)}
-              >
-                <span className="salon-option-name">{stylist.name}</span>
-                <span className="salon-option-detail">{stylist.treatments.length > 1 ? "Klip og farve" : "Klip"}</span>
-              </button>
+              <PhotoOption key={stylist.id} photo={stylist.id} name={stylist.name} detail={stylist.treatments.length > 1 ? "Klip og farve" : "Klip"}
+                selected={booking.stylistId === stylist.id} onSelect={() => booking.selectStylist(stylist.id)} />
             ))}
           </div>
         </fieldset>

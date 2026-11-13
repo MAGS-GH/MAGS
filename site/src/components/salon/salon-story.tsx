@@ -7,7 +7,7 @@ import { initialSalonDisplay } from "./display-state";
 
 const chapters = [
   { id: "behandling", name: "Behandling", progress: .22, title: "Hvad skal du have lavet?", description: "Skift behandling, og se varigheden på receptionens skærm." },
-  { id: "frisoer", name: "Frisør", progress: .46, title: "Har du en fast frisør?", description: "Se på skiltene, hvem der tilbyder behandlingen. Den valgte frisørs spejl lyser op." },
+  { id: "frisoer", name: "Frisør", progress: .46, title: "Har du en fast frisør?", description: "Vælg en frisør, og se spejlet lyse op." },
   { id: "tid", name: "Tid", progress: .72, title: "Vælg en tid, der passer", description: "Skærmen i receptionen viser, hvor der er plads til hele behandlingen." },
   { id: "bekraeftelse", name: "Bekræftelse", progress: 1, title: "Aftalen i salonens kalender", description: "Se, hvad kunden får bekræftet, og hvor aftalen lander hos frisøren." },
 ] as const;
