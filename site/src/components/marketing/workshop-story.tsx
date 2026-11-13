@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useScrollScene } from "@/components/marketing/use-scroll-scene";
 import { siteConfig } from "@/lib/site-config";
 
 const chapters = [
@@ -38,173 +39,20 @@ const chapters = [
 
 const frames = ["/workshop/overview.webp", ...chapters.map(({ id }) => "/workshop/" + id + ".webp")];
 
-type Workshop = ReturnType<typeof import("@/components/workshop/scene").mountWorkshop>;
+async function loadWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => void) {
+  const { mountWorkshop } = await import("@/components/workshop/scene");
+  return mountWorkshop(canvas, onUnavailable);
+}
 
 export function WorkshopStory() {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const stage = useRef<HTMLElement>(null);
-  const intro = useRef<HTMLDivElement>(null);
-  const sections = useRef<(HTMLElement | null)[]>([]);
-  const scene = useRef<Workshop | null>(null);
-  const progress = useRef(0);
-  const occupiedRef = useRef(false);
-  const activeRef = useRef(-1);
-  const visible = useRef(true);
-  const [live, setLive] = useState(false);
-  const [active, setActive] = useState(-1);
+  const {
+    active, canvas, intro, live, sections, stage, staticView, setSceneState, toggleStaticView,
+  } = useScrollScene(chapters, loadWorkshop, false);
   const [occupied, setOccupied] = useState(false);
-  const [staticView, setStaticView] = useState(false);
-
-  useEffect(() => {
-    if (!canvas.current || !stage.current || !intro.current) return;
-    const surface = canvas.current;
-    const stageElement = stage.current;
-    const introElement = intro.current;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let disposed = false;
-    let loading = false;
-    let unavailable = false;
-    let animationFrame = 0;
-    let loadFrame = 0;
-    let lastFrame: number | null = null;
-
-    const draw = (now: number) => {
-      animationFrame = 0;
-      if (document.hidden) {
-        lastFrame = null;
-        return;
-      }
-      const trigger = stageElement.getBoundingClientRect().top;
-      const stops = [
-        { position: introElement.getBoundingClientRect().top, progress: 0, hold: 0 },
-        ...chapters.map((chapter, index) => {
-          const section = sections.current[index];
-          const bounds = section?.getBoundingClientRect();
-          const frame = section?.firstElementChild?.getBoundingClientRect();
-          return {
-            position: bounds?.top ?? Infinity,
-            progress: chapter.progress,
-            hold: bounds && frame ? bounds.height - frame.height : 0,
-          };
-        }),
-      ];
-
-      let current = 0;
-      for (let index = 1; index < stops.length; index++) {
-        if (trigger + 2 >= stops[index].position) current = index;
-        else break;
-      }
-      const from = stops[current];
-      const to = stops[current + 1];
-      let value = from.progress;
-      if (to && Number.isFinite(to.position)) {
-        // Keep the camera at the chapter pose while its copy is pinned.
-        const start = from.position + from.hold;
-        const fraction = Math.max(0, Math.min(1, (trigger - start) / Math.max(1, to.position - start)));
-        value += (to.progress - from.progress) * fraction;
-      }
-      const animate = visible.current && scene.current && !reducedMotion.matches;
-      // Exponential damping gives fast wheel and touch gestures a short, frame-rate independent glide.
-      const elapsed = lastFrame === null ? 0 : Math.min(50, now - lastFrame);
-      const gap = value - progress.current;
-      const settling = animate && lastFrame !== null && Math.abs(gap) >= 0.001;
-      progress.current = settling ? progress.current + gap * -Math.expm1(-elapsed / 145) : value;
-      lastFrame = animate ? now : null;
-      stageElement.dataset.progress = progress.current.toFixed(3);
-      stageElement.style.setProperty("--workshop-progress", String(progress.current));
-      if (current - 1 !== activeRef.current) {
-        activeRef.current = current - 1;
-        setActive(current - 1);
-      }
-      if (animate) scene.current?.render(progress.current, occupiedRef.current);
-      if (settling) schedule();
-    };
-
-    const schedule = () => {
-      if (!animationFrame) animationFrame = requestAnimationFrame(draw);
-    };
-
-    const stopScene = () => {
-      scene.current?.dispose();
-      scene.current = null;
-      setLive(false);
-    };
-
-    const startScene = async () => {
-      if (loading || unavailable || scene.current || staticView || reducedMotion.matches || !visible.current || document.hidden) return;
-      loading = true;
-      try {
-        const { mountWorkshop } = await import("@/components/workshop/scene");
-        if (disposed || reducedMotion.matches || !visible.current || document.hidden) return;
-        scene.current = mountWorkshop(surface, () => {
-          unavailable = true;
-          stopScene();
-        });
-        schedule();
-        setLive(true);
-      } catch {
-        unavailable = true;
-        stopScene();
-      } finally {
-        loading = false;
-      }
-    };
-
-    const refreshMotion = () => {
-      if (reducedMotion.matches) stopScene();
-      else void startScene();
-      schedule();
-    };
-    const refreshVisibility = () => {
-      lastFrame = null;
-      if (!document.hidden) void startScene();
-      schedule();
-    };
-
-    const intersection = new IntersectionObserver(([entry]) => {
-      visible.current = entry.isIntersecting;
-      lastFrame = null;
-      if (entry.isIntersecting) {
-        void startScene();
-        schedule();
-      }
-    });
-    intersection.observe(stageElement);
-    const resize = new ResizeObserver(schedule);
-    resize.observe(stageElement);
-    for (const section of sections.current) {
-      if (section) resize.observe(section);
-    }
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    document.addEventListener("visibilitychange", refreshVisibility);
-    reducedMotion.addEventListener("change", refreshMotion);
-    loadFrame = requestAnimationFrame(() => {
-      loadFrame = requestAnimationFrame(() => {
-        schedule();
-        void startScene();
-      });
-    });
-
-    return () => {
-      disposed = true;
-      cancelAnimationFrame(loadFrame);
-      cancelAnimationFrame(animationFrame);
-      intersection.disconnect();
-      resize.disconnect();
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-      document.removeEventListener("visibilitychange", refreshVisibility);
-      reducedMotion.removeEventListener("change", refreshMotion);
-      scene.current?.dispose();
-      scene.current = null;
-    };
-  }, [staticView]);
 
   function selectScenario(nextOccupied: boolean) {
     setOccupied(nextOccupied);
-    occupiedRef.current = nextOccupied;
-    if (visible.current && !document.hidden) scene.current?.render(progress.current, nextOccupied);
+    setSceneState(nextOccupied);
   }
 
   const calendarStill = occupied ? "/workshop/aftale-optaget.webp" : frames[3];
@@ -247,7 +95,7 @@ export function WorkshopStory() {
           <button
             type="button"
             className="motion-toggle text-link"
-            onClick={() => { setLive(false); setStaticView(!staticView); }}
+            onClick={toggleStaticView}
           >
             {staticView ? "Vis 3D" : "Vis stillbilleder"}
           </button>

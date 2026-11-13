@@ -40,6 +40,17 @@ export default function Home() {
                 </article>
               ))}
             </div>
+            <Link href="/eksempler/frisoersalon" className="group mt-9 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-[1fr_minmax(0,42%)]">
+              <div className="self-center p-6 sm:p-9">
+                <p className="editorial-kicker">Interaktiv demo</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Booking til frisørsaloner</h3>
+                <p className="mt-3 max-w-[42ch] text-muted-foreground">Træd ind i salonen og prøv at booke en behandling på tværs af tre frisørers kalendere.</p>
+                <span className="text-link mt-4 inline-block font-semibold group-hover:text-ring">Prøv 3D-salonen <span aria-hidden="true">↗</span></span>
+              </div>
+              <div className="relative aspect-[2/1] sm:aspect-auto sm:min-h-56">
+                <Image src="/salon/salon.webp" alt="" fill sizes="(max-width: 639px) 92vw, 40vw" className="object-cover" />
+              </div>
+            </Link>
           </div>
         </section>
 
