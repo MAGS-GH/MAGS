@@ -71,6 +71,7 @@
 }
 .salon-option:hover { border-color: var(--salon-accent); }
 .salon-option[aria-pressed="true"] { border-color: #614435; background: #614435; color: #fffaf3; }
+.salon-option:disabled { border-color: var(--salon-border); background: #eee5d9; color: var(--muted-foreground); cursor: default; }
 .salon-option-detail { font-size: .66rem; font-weight: 500; }
 .salon-photo-grid {
   display: grid;
@@ -133,6 +134,7 @@
 .salon-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .salon-times[tabindex] { max-height: 5.75rem; overflow-y: auto; scrollbar-width: thin; padding: .15rem .35rem .15rem .15rem; }
 .salon-booking-note { margin-top: .55rem; font-size: .76rem; line-height: 1.4; }
+.salon-chosen-time { margin-block: 0 .5rem; color: #644636; font-weight: 650; }
 .salon-booking-summary { margin-top: .55rem; font-size: .86rem; }
 .salon-booking-summary:has(.salon-booking-note) {
   padding: .48rem .64rem;
@@ -169,8 +171,9 @@
   .salon-opening .salon-lead { margin-block: .75rem 1rem; }
   .salon-opening .primary-action { min-height: 42px; font-size: .85rem; }
   .salon-visual { bottom: auto; height: clamp(100px, calc(100svh - 465px), 43svh); }
-  .salon-stage[data-chapter="0"] .salon-visual { height: clamp(92px, calc(100svh - 505px), 43svh); }
-  .salon-stage[data-chapter="1"] .salon-visual { height: clamp(92px, calc(100svh - 548px), 43svh); }
+  .salon-stage[data-salon-step="behandling"] .salon-visual { height: clamp(92px, calc(100svh - 505px), 43svh); }
+  .salon-stage[data-salon-step="tid"] .salon-visual { height: clamp(92px, calc(100svh - 500px), 43svh); }
+  .salon-stage[data-salon-step="frisoer"] .salon-visual { height: clamp(92px, calc(100svh - 576px), 43svh); }
   .salon-stage[data-chapter="-1"] .salon-visual { height: 100%; }
   .salon-visual::after { background: linear-gradient(0deg, rgb(31 24 18 / 84%) 8%, rgb(31 24 18 / 54%) 41%, transparent 73%); }
   .salon-stage { background: #eadccc; }
@@ -197,12 +200,22 @@
 }
 
 @media (max-width: 790px) and (max-height: 660px) {
+  #tid .salon-panel { padding-block: .65rem; }
+  #tid .salon-booking-actions { margin-top: .46rem; }
+  .salon-story #tid .workshop-chapter-frame { padding-block-end: 6.65rem; }
   #frisoer .salon-option-photo { height: clamp(2.5rem, 8svh, 3.5rem); }
   #frisoer .salon-option-label { padding-block: .3rem .24rem; }
   #frisoer .salon-auto-option .salon-option-label { padding: 0; }
   #frisoer .salon-panel { padding-block: .65rem; }
+  #frisoer .salon-chosen-time { margin-bottom: .36rem; }
+  #frisoer .salon-booking { margin-top: .45rem; }
   #frisoer .salon-booking-actions { margin-top: .46rem; }
   .salon-story #frisoer .workshop-chapter-frame { padding-block-end: 6.3rem; }
+}
+
+@media (max-width: 340px) and (max-height: 660px) {
+  #frisoer .salon-option-photo { height: 2.5rem; }
+  #frisoer .salon-panel h2 + p { display: none; }
 }
 
 @media (max-height: 560px) {

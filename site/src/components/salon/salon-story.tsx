@@ -7,8 +7,8 @@ import { initialSalonDisplay } from "./display-state";
 
 const chapters = [
   { id: "behandling", name: "Behandling", progress: .22, title: "Hvad skal du have lavet?", description: "Skift behandling, og se varigheden på receptionens skærm." },
-  { id: "frisoer", name: "Frisør", progress: .46, title: "Har du en fast frisør?", description: "Vælg en frisør, og se spejlet lyse op." },
-  { id: "tid", name: "Tid", progress: .72, title: "Vælg en tid, der passer", description: "Skærmen i receptionen viser, hvor der er plads til hele behandlingen." },
+  { id: "tid", name: "Tid", progress: .46, title: "Hvornår passer det dig?", description: "Ledige tider hos alle frisører." },
+  { id: "frisoer", name: "Frisør", progress: .72, title: "Hvem skal tage din tid?", description: "Her er frisørerne, der kan tage din tid." },
   { id: "bekraeftelse", name: "Bekræftelse", progress: 1, title: "Aftalen i salonens kalender", description: "Se, hvad kunden får bekræftet, og hvor aftalen lander hos frisøren." },
 ] as const;
 
@@ -49,7 +49,7 @@ export function SalonStory() {
         </div>
       </div>
 
-      <figure ref={stage} className="workshop-stage salon-stage" data-renderer={live ? "webgl" : "still"} data-chapter={active}>
+      <figure ref={stage} className="workshop-stage salon-stage" data-renderer={live ? "webgl" : "still"} data-chapter={active} data-salon-step={chapters[active]?.id ?? "start"}>
         <div className="workshop-visual salon-visual" aria-hidden="true">
           <SalonPoster name={posters[0]} opening />
           {!live && active >= 0 && <SalonPoster name={posters[active + 1]} />}

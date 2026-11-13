@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
-  formatSalonTime, salonAvailability, salonDays, stylists, treatments,
+  formatSalonTime, salonCalendar, salonDays, treatments,
   type SalonDay, type StylistId, type TreatmentId,
 } from "./availability";
 import { initialSalonDisplay, type SalonDisplayState } from "./display-state";
@@ -21,49 +21,57 @@ const initialSelection: BookingSelection = {
 export function useSalonBooking(onSceneChange: (state: SalonDisplayState) => void) {
   const [selection, setSelection] = useState(initialSelection);
   const { day, treatment, stylistId, slotStart, confirmed } = selection;
-  const slots = useMemo(() => salonAvailability(day, treatment, stylistId), [day, treatment, stylistId]);
-  const slot = slots.find(({ start }) => start === slotStart);
+  const calendar = useMemo(() => salonCalendar(treatment), [treatment]);
+  const times = calendar[day];
+  const time = times.find(({ start }) => start === slotStart);
+  const stylist = time?.stylists.find(({ id }) => id === stylistId) ?? time?.stylists[0];
 
   useEffect(() => {
     onSceneChange({
       day, treatment, stylistId, confirmed,
-      slot: slot ? { start: slot.start, end: slot.end, stylistId: slot.stylist.id } : null,
+      slot: time && stylist ? { start: time.start, end: time.end, stylistId: stylist.id } : null,
     });
-  }, [onSceneChange, day, treatment, stylistId, confirmed, slot]);
+  }, [onSceneChange, day, treatment, stylistId, confirmed, time, stylist]);
 
   function selectTreatment(treatment: TreatmentId) {
     setSelection((previous) => {
       if (previous.treatment === treatment) return previous;
-      const stylist = stylists.find(({ id }) => id === previous.stylistId);
-      const stylistId = stylist?.treatments.includes(treatment) ? stylist.id : null;
-      return { ...previous, treatment, stylistId, slotStart: null, confirmed: false };
+      const nextCalendar = salonCalendar(treatment);
+      const day = nextCalendar[previous.day].length ? previous.day
+        : (Object.keys(salonDays) as SalonDay[]).find((candidate) => nextCalendar[candidate].length > 0) ?? previous.day;
+      const time = day === previous.day ? nextCalendar[day].find(({ start }) => start === previous.slotStart) : undefined;
+      const stylistId = time?.stylists.find(({ id }) => id === previous.stylistId)?.id ?? null;
+      return { treatment, day, stylistId, slotStart: time?.start ?? null, confirmed: false };
     });
   }
 
   function selectStylist(stylistId: StylistId | null) {
+    if (!time || (stylistId && !time.stylists.some(({ id }) => id === stylistId))) return;
     setSelection((previous) => previous.stylistId === stylistId ? previous : {
-      ...previous, stylistId, slotStart: null, confirmed: false,
+      ...previous, stylistId, confirmed: false,
     });
   }
 
   function selectDay(day: SalonDay) {
+    if (calendar[day].length === 0) return;
     setSelection((previous) => previous.day === day ? previous : {
-      ...previous, day, slotStart: null, confirmed: false,
+      ...previous, day, stylistId: null, slotStart: null, confirmed: false,
     });
   }
 
   function selectSlot(slotStart: number) {
+    if (!times.some(({ start }) => start === slotStart)) return;
     setSelection((previous) => previous.slotStart === slotStart ? previous : {
-      ...previous, slotStart, confirmed: false,
+      ...previous, slotStart, stylistId: null, confirmed: false,
     });
   }
 
   function confirm() {
-    if (slot) setSelection((previous) => ({ ...previous, confirmed: true }));
+    if (time && stylist) setSelection((previous) => ({ ...previous, confirmed: true }));
   }
 
   return {
-    ...selection, slots, slot, selectTreatment, selectStylist, selectDay, selectSlot, confirm,
+    ...selection, calendar, times, time, stylist, selectTreatment, selectStylist, selectDay, selectSlot, confirm,
     reset: () => setSelection(initialSelection),
   };
 }
@@ -73,7 +81,7 @@ type Chapter = "behandling" | "frisoer" | "tid" | "bekraeftelse";
 function PhotoOption({ photo, name, detail, selected, onSelect }: {
   photo: TreatmentId | StylistId;
   name: string;
-  detail: string;
+  detail?: string;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -85,7 +93,7 @@ function PhotoOption({ photo, name, detail, selected, onSelect }: {
       </span>
       <span className="salon-option-label">
         <span className="salon-option-name">{name}</span>
-        <span className="salon-option-detail">{detail}</span>
+        {detail && <span className="salon-option-detail">{detail}</span>}
       </span>
     </button>
   );
@@ -93,7 +101,7 @@ function PhotoOption({ photo, name, detail, selected, onSelect }: {
 
 export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booking: ReturnType<typeof useSalonBooking> }) {
   const treatment = treatments[booking.treatment];
-  const { slot } = booking;
+  const { time, stylist } = booking;
 
   if (chapter === "behandling") {
     return (
@@ -107,37 +115,51 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
             ))}
           </div>
         </fieldset>
-        <div className="salon-booking-actions"><a className="text-link" href="#frisoer">Vælg frisør <span aria-hidden="true">↓</span></a></div>
+        <div className="salon-booking-actions"><a className="primary-action" href="#tid">Se ledige tider <span aria-hidden="true">↓</span></a></div>
       </div>
     );
   }
 
   if (chapter === "frisoer") {
+    if (!time || !stylist) {
+      return (
+        <div className="salon-booking">
+          <p className="salon-booking-note">Vælg en tid for at se, hvem der kan tage din behandling.</p>
+          <div className="salon-booking-actions"><a className="primary-action" href="#tid">Vælg en tid <span aria-hidden="true">↑</span></a></div>
+        </div>
+      );
+    }
+    const multiple = time.stylists.length > 1;
+
     return (
       <div className="salon-booking">
+        <p className="salon-booking-note salon-chosen-time">{salonDays[booking.day]} kl. {formatSalonTime(time.start)} · {treatment.name}</p>
         <fieldset className="salon-options">
           <legend className="sr-only">Frisør</legend>
-          <button className="salon-option salon-auto-option" type="button" aria-pressed={booking.stylistId === null} onClick={() => booking.selectStylist(null)}>
+          {multiple && <button className="salon-option salon-auto-option" type="button" aria-pressed={booking.stylistId === null} onClick={() => booking.selectStylist(null)}>
             <span className="salon-option-label">
-              <span className="salon-option-name">Første ledige</span>
-              <span className="salon-option-detail">Alle relevante frisører</span>
+              <span className="salon-option-name">Ingen præference</span>
+              <span className="salon-option-detail">{time.stylists[0].name} kan tage din tid</span>
             </span>
             {booking.stylistId === null && <span className="salon-selection-mark" aria-hidden="true">✓</span>}
-          </button>
+          </button>}
           <div className="salon-photo-grid salon-stylist-options">
-            {stylists.filter((stylist) => stylist.treatments.includes(booking.treatment)).map((stylist) => (
-              <PhotoOption key={stylist.id} photo={stylist.id} name={stylist.name} detail={stylist.treatments.length > 1 ? "Klip og farve" : "Klip"}
-                selected={booking.stylistId === stylist.id} onSelect={() => booking.selectStylist(stylist.id)} />
+            {time.stylists.map(({ id, name }) => (
+              <PhotoOption key={id} photo={id} name={name} detail={multiple ? undefined : "Tildelt automatisk"}
+                selected={multiple ? booking.stylistId === id : true} onSelect={() => booking.selectStylist(multiple ? id : null)} />
             ))}
           </div>
         </fieldset>
-        <div className="salon-booking-actions"><a className="text-link" href="#tid">Se ledige tider <span aria-hidden="true">↓</span></a></div>
+        <div className="salon-booking-actions">
+          <a className="primary-action" href="#bekraeftelse">Gå til bekræftelse <span aria-hidden="true">↓</span></a>
+          <a className="text-link" href="#tid">Skift tid</a>
+        </div>
       </div>
     );
   }
 
   if (chapter === "tid") {
-    const scrollTimes = booking.slots.length > 4;
+    const scrollTimes = booking.times.length > 4;
 
     return (
       <div className="salon-booking">
@@ -145,13 +167,15 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
           <legend className="sr-only">Dag</legend>
           <div className="salon-option-grid salon-days">
             {(Object.keys(salonDays) as SalonDay[]).map((day) => (
-              <button className="salon-option" type="button" key={day} aria-pressed={booking.day === day} onClick={() => booking.selectDay(day)}>
-                {salonDays[day]}
+              <button className="salon-option" type="button" key={day} aria-pressed={booking.day === day}
+                disabled={booking.calendar[day].length === 0} onClick={() => booking.selectDay(day)}>
+                <span>{salonDays[day]}</span>
+                {booking.calendar[day].length === 0 && <span className="salon-option-detail">Ingen tider</span>}
               </button>
             ))}
           </div>
         </fieldset>
-        {booking.slots.length > 0 ? (
+        {booking.times.length > 0 ? (
           <fieldset className="salon-options">
             <legend className="sr-only">Ledige tider</legend>
             <div
@@ -160,25 +184,33 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
               aria-label={scrollTimes ? "Rul gennem ledige tider" : undefined}
               tabIndex={scrollTimes ? 0 : undefined}
             >
-              {booking.slots.map(({ start, stylist }) => (
+              {booking.times.map(({ start, stylists }) => (
                 <button className="salon-option" type="button" key={start} aria-pressed={booking.slotStart === start} onClick={() => booking.selectSlot(start)}>
                   <span className="salon-option-name">{formatSalonTime(start)}</span>
-                  <span className="salon-option-detail">{stylist.name}</span>
+                  <span className="salon-option-detail">{stylists.length === 1 ? "1 ledig frisør" : `${stylists.length} ledige frisører`}</span>
                 </button>
               ))}
             </div>
           </fieldset>
         ) : (
-          <p className="salon-booking-note" role="status">Ingen ledige tider. Prøv en anden dag eller frisør.</p>
+          <div className="salon-booking-actions">
+            <p className="salon-booking-note" role="status">Der er ingen ledige tider til {treatment.name.toLowerCase()} i demokalenderen.</p>
+            <a className="text-link" href="#behandling">Skift behandling</a>
+          </div>
         )}
-        {slot && (
-          <div className="salon-booking-actions"><a className="text-link" href="#bekraeftelse">Gå til bekræftelse <span aria-hidden="true">↓</span></a></div>
+        {time && stylist && (
+          <div className="salon-booking-actions">
+            <a className="primary-action" href={time.stylists.length > 1 ? "#frisoer" : "#bekraeftelse"}>
+              {time.stylists.length > 1 ? "Vælg frisør" : "Gå til bekræftelse"} <span aria-hidden="true">↓</span>
+            </a>
+            {time.stylists.length === 1 && <span className="salon-option-detail">{stylist.name} kan tage din tid.</span>}
+          </div>
         )}
       </div>
     );
   }
 
-  if (!slot) {
+  if (!time || !stylist) {
     return (
       <div className="salon-booking">
         <div className="salon-booking-actions">
@@ -189,14 +221,14 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
     );
   }
 
-  const timeRange = `${formatSalonTime(slot.start)}–${formatSalonTime(slot.end)}`;
-  const calendarOwner = slot.stylist.name.endsWith("s") ? `${slot.stylist.name}'` : `${slot.stylist.name}s`;
+  const timeRange = `${formatSalonTime(time.start)}–${formatSalonTime(time.end)}`;
+  const calendarOwner = stylist.name.endsWith("s") ? `${stylist.name}'` : `${stylist.name}s`;
 
   return (
     <div className="salon-booking">
       <div className="salon-booking-summary">
         {booking.confirmed && <p className="salon-booking-note">{calendarOwner} kalender</p>}
-        <p><strong>{treatment.name} hos {slot.stylist.name}</strong></p>
+        <p><strong>{treatment.name} hos {stylist.name}</strong></p>
         <p>{salonDays[booking.day]} kl. {timeRange} · {treatment.minutes} min.</p>
       </div>
       <p className="salon-booking-note" role="status">{booking.confirmed && `Demoaftalen er lagt i ${calendarOwner} kalender.`}</p>
@@ -204,7 +236,11 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
         {booking.confirmed ? (
           <a className="text-link" href="#behandling" onClick={booking.reset}>Prøv igen <span aria-hidden="true">↑</span></a>
         ) : (
-          <button className="primary-action" type="button" onClick={booking.confirm}>Bekræft demoaftalen</button>
+          <>
+            <button className="primary-action" type="button" onClick={booking.confirm}>Bekræft demoaftalen</button>
+            <a className="text-link" href="#tid">Skift tid</a>
+            {time.stylists.length > 1 && <a className="text-link" href="#frisoer">Skift frisør</a>}
+          </>
         )}
       </div>
     </div>

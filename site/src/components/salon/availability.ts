@@ -23,7 +23,7 @@ export const stylists: readonly Stylist[] = [
   {
     id: "freja", name: "Freja", station: 0, treatments: ["klipning", "farve"],
     calendar: {
-      tirsdag: { shift: [540, 960], busy: [[585, 960]] },
+      tirsdag: { shift: [540, 960], busy: [[585, 660], [705, 960]] },
       onsdag: { shift: [600, 840], busy: [[600, 660], [705, 840]] },
     },
   },
@@ -43,25 +43,34 @@ export const stylists: readonly Stylist[] = [
   },
 ];
 
-export type SalonSlot = { start: number; end: number; stylist: Stylist };
+export type SalonTime = { start: number; end: number; stylists: Stylist[] };
 
-export function salonAvailability(day: SalonDay, treatment: TreatmentId, stylistId: StylistId | null) {
+export function salonTimeOptions(day: SalonDay, treatment: TreatmentId) {
   const duration = treatments[treatment].minutes;
-  const slots = new Map<number, SalonSlot>();
+  const times = new Map<number, SalonTime>();
 
   for (const stylist of stylists) {
-    if ((stylistId && stylist.id !== stylistId) || !stylist.treatments.includes(treatment)) continue;
+    if (!stylist.treatments.includes(treatment)) continue;
 
     const { shift: [opens, closes], busy } = stylist.calendar[day];
     // The entire service must fit before the next appointment or the end of the shift.
     for (let start = Math.ceil(opens / 30) * 30; start + duration <= closes; start += 30) {
       const end = start + duration;
-      if (slots.has(start) || busy.some(([busyStart, busyEnd]) => start < busyEnd && end > busyStart)) continue;
-      slots.set(start, { start, end, stylist });
+      if (busy.some(([busyStart, busyEnd]) => start < busyEnd && end > busyStart)) continue;
+      const time = times.get(start);
+      if (time) time.stylists.push(stylist);
+      else times.set(start, { start, end, stylists: [stylist] });
     }
   }
 
-  return [...slots.values()].sort((first, second) => first.start - second.start);
+  return [...times.values()].sort((first, second) => first.start - second.start);
+}
+
+export function salonCalendar(treatment: TreatmentId) {
+  return {
+    tirsdag: salonTimeOptions("tirsdag", treatment),
+    onsdag: salonTimeOptions("onsdag", treatment),
+  };
 }
 
 export function formatSalonTime(minutes: number) {

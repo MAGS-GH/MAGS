@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
-import { formatSalonTime, salonAvailability, salonDays, stylists, treatments } from "./availability";
+import { formatSalonTime, salonDays, salonTimeOptions, stylists, treatments } from "./availability";
 import type { SalonDisplayState } from "./display-state";
 
 const stationPositions = [-2.5, -0.15, 2.2];
@@ -22,15 +22,16 @@ const displayTones = {
 
 function displayPhase(progress: number): DisplayPhase {
   if (progress >= .86) return "review";
-  if (progress >= .59) return "time";
-  if (progress >= .34) return "stylist";
+  if (progress >= .59) return "stylist";
+  if (progress >= .34) return "time";
   if (progress >= .11) return "treatment";
   return "welcome";
 }
 
-function tabletMessage(display: SalonDisplayState, phase: DisplayPhase) {
+type TimeOptions = ReturnType<typeof salonTimeOptions>;
+
+function tabletMessage(display: SalonDisplayState, phase: DisplayPhase, times: TimeOptions) {
   const { treatment, stylistId, slot, day, confirmed } = display;
-  const selected = stylists.find(({ id }) => id === stylistId);
   const assigned = stylists.find(({ id }) => id === slot?.stylistId);
   const service = treatments[treatment];
   const dayName = salonDays[day];
@@ -39,15 +40,19 @@ function tabletMessage(display: SalonDisplayState, phase: DisplayPhase) {
   if (phase === "welcome" || phase === "treatment") {
     return { phase: "BEHANDLING", title: "Vælg behandling", detail: service.name, sub: `${service.minutes} min.` };
   }
-  if (phase === "stylist") {
-    return { phase: "FRISØR", title: "Vælg frisør", detail: selected?.name ?? "Første ledige", sub: service.name };
-  }
   if (phase === "time") {
-    const first = slot ? null : salonAvailability(day, treatment, stylistId)[0];
+    const first = times[0];
     return {
       phase: "TIDSPUNKT", title: dayName,
-      detail: time ?? (first ? `${formatSalonTime(first.start)} · ${first.stylist.name}` : "Ingen ledige tider"),
-      sub: time ? (assigned?.name ?? service.name) : first ? "Første ledige tid" : (selected?.name ?? service.name),
+      detail: time ?? (first ? `${formatSalonTime(first.start)}–${formatSalonTime(first.end)}` : "Ingen ledige tider"),
+      sub: time || !first ? service.name : `Første ledige · ${service.name}`,
+    };
+  }
+  if (phase === "stylist") {
+    return {
+      phase: "FRISØR", title: stylistId ? "Valgt frisør" : "Tildelt frisør",
+      detail: assigned?.name ?? "Vælg en tid først",
+      sub: time ? `${dayName} ${time}` : service.name,
     };
   }
   return {
@@ -57,23 +62,26 @@ function tabletMessage(display: SalonDisplayState, phase: DisplayPhase) {
   };
 }
 
-function nameplateMessage(stylist: typeof stylists[number], display: SalonDisplayState, phase: DisplayPhase): [string, DisplayTone] {
+function nameplateMessage(stylist: typeof stylists[number], display: SalonDisplayState, phase: DisplayPhase, times: TimeOptions): [string, DisplayTone] {
   if (phase === "welcome") return [stylist.treatments.length > 1 ? "Klipning og farve" : "Klipning", "neutral"];
-  const { treatment, stylistId, slot, day, confirmed } = display;
+  const { treatment, stylistId, slot, confirmed } = display;
   if (!stylist.treatments.includes(treatment)) return ["Tilbyder klipning", "muted"];
   if (phase === "treatment") return [treatments[treatment].name, "neutral"];
-  if (phase === "stylist") return stylistId === stylist.id
-    ? ["Valgt frisør", "selected"]
-    : [treatments[treatment].name, "neutral"];
 
-  if (slot?.stylistId === stylist.id) {
-    if (phase === "review" && confirmed) return [`Reserveret ${formatSalonTime(slot.start)}`, "confirmed"];
-    return [`Valgt tid ${formatSalonTime(slot.start)}`, "selected"];
+  if (slot) {
+    const time = formatSalonTime(slot.start);
+    if (phase !== "time" && slot.stylistId === stylist.id) {
+      if (phase === "review" && confirmed) return [`Reserveret ${time}`, "confirmed"];
+      return [stylistId === stylist.id ? `Valgt ${time}` : `Tildelt ${time}`, "selected"];
+    }
+    const option = times.find(({ start }) => start === slot.start);
+    return option?.stylists.some(({ id }) => id === stylist.id)
+      ? [`Ledig ${time}`, "neutral"]
+      : [`Ikke ledig ${time}`, "muted"];
   }
 
-  const first = salonAvailability(day, treatment, stylist.id)[0];
-  const detail = first ? `Ledig ${formatSalonTime(first.start)}` : "Ingen ledig tid";
-  return [detail, stylistId === stylist.id ? "selected" : first ? "neutral" : "muted"];
+  const first = times.find((option) => option.stylists.some(({ id }) => id === stylist.id));
+  return first ? [`Ledig ${formatSalonTime(first.start)}`, "neutral"] : ["Ingen ledig tid", "muted"];
 }
 
 function createTextureCanvas(width: number, height: number, color = true) {
@@ -562,9 +570,10 @@ export async function createSalonModel() {
     const displayKey = [phase, treatment, stylistId, day, slot?.stylistId, slot?.start, slot?.end, confirmed].join("/");
     if (lastDisplay === displayKey) return;
     lastDisplay = displayKey;
+    const times = phase === "welcome" || phase === "treatment" ? [] : salonTimeOptions(day, treatment);
 
     for (const stylist of stylists) {
-      const [detail, tone] = nameplateMessage(stylist, display, phase);
+      const [detail, tone] = nameplateMessage(stylist, display, phase, times);
       const colors = displayTones[tone];
       plates[stylist.station].paint(`${detail}/${tone}`, (context) => {
         context.fillStyle = colors.background;
@@ -582,7 +591,7 @@ export async function createSalonModel() {
       });
     }
 
-    const message = tabletMessage(display, phase);
+    const message = tabletMessage(display, phase, times);
     const bookingDone = phase === "review" && confirmed && slot !== null;
     const colors = displayTones[bookingDone ? "confirmed" : "selected"];
     tabletScreen.paint(`${message.phase}/${message.title}/${message.detail}/${message.sub}/${bookingDone}`, (context) => {
@@ -614,7 +623,7 @@ export async function createSalonModel() {
   function update(display: SalonDisplayState, progress: number, elapsed: number) {
     const phase = displayPhase(progress);
     refreshScreens(display, phase);
-    const highlightedId = progress >= .34 ? display.slot?.stylistId ?? display.stylistId : null;
+    const highlightedId = phase === "stylist" || phase === "review" ? display.slot?.stylistId : null;
     const bookedId = phase === "review" && display.confirmed ? display.slot?.stylistId : null;
     let changing = false;
     const weight = -Math.expm1(-Math.max(0, elapsed) / 145);

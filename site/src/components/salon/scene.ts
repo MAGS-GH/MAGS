@@ -10,8 +10,8 @@ type Shot = { at: number; position: Point; target: Point; fieldOfView: number; o
 const shots: Shot[] = [
   { at: 0, position: [-1.45, 1.61, 4.07], target: [.46, 1.43, -2.66], fieldOfView: 44, offset: .12 },
   { at: .22, position: [1.13, 1.52, 2.24], target: [2.29, 1.18, .93], fieldOfView: 40, offset: .16 },
-  { at: .46, position: [1.02, 1.57, 2.69], target: [.09, 1.48, -2.46], fieldOfView: 45, offset: .16 },
-  { at: .72, position: [1.95, 1.62, 2.23], target: [2.33, 1.19, .94], fieldOfView: 43, offset: .16 },
+  { at: .46, position: [1.95, 1.62, 2.23], target: [2.33, 1.19, .94], fieldOfView: 43, offset: .16 },
+  { at: .72, position: [1.02, 1.57, 2.69], target: [.09, 1.48, -2.46], fieldOfView: 45, offset: .16 },
   { at: 1, position: [-1.04, 1.96, 4.51], target: [.65, 1.39, -2.52], fieldOfView: 44, offset: .06 },
 ];
 
@@ -107,7 +107,7 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
       const aspect = width / height;
       const wide = width > 790;
       const framing = wide ? lerp(from.offset, to.offset, amount) : 0;
-      const staffWidening = wide ? 7 * (1 - THREE.MathUtils.smoothstep(Math.abs(progress - .46), 0, .24)) : 0;
+      const staffWidening = wide ? 7 * (1 - THREE.MathUtils.smoothstep(Math.abs(progress - .72), 0, .25)) : 0;
       const portraitFinale = wide ? 0 : THREE.MathUtils.smoothstep(progress, .72, 1);
       const fieldOfView = lerp(from.fieldOfView, to.fieldOfView, amount) + staffWidening + portraitFinale * 5;
 
