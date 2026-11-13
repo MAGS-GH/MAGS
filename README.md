@@ -1,43 +1,19 @@
-# MAGS
+# MAGS Solutions
 
-Hjemmeside og marketing for **mags.dk** (MAGS Solutions).
+Hjemmesiden på [mags.dk](https://mags.dk/) viser MAGS' ydelser med et scrollstyret Three.js-eksempel. Next.js i `site/` serverer forsiden og `/booking`. Den private .NET 10-tjeneste i `api/` beregner ledige tider og opretter Teams-møder gennem Microsoft Graph. PostgreSQL holder styr på samtidige forsøg og genforsøg.
 
-## Struktur
+## Kør lokalt
 
-- **`site/`** — Next.js 16 (App Router, TypeScript, Tailwind CSS 4), marketing-indhold og design system.
-
-Repo-roden hedder `MAGS` (stort), så selve appen ligger i `site/` for at overholde npm’s krav om små bogstaver i `package.json`-navnet.
-
-## Kom i gang
-
-```bash
-cd site
-cp .env.example .env.local
-# Udfyld NEXT_PUBLIC_BOOKING_URL og NEXT_PUBLIC_CONTACT_EMAIL
-npm install
-npm run dev
-```
-
-Åbn [http://localhost:3000](http://localhost:3000).
-
-## Produktion (Docker Compose)
-
-Alle services kører via **Compose** i roden:
-
-```bash
-cp .env.example .env
-# Udfyld NEXT_PUBLIC_* i .env — de indgår i Next.js-build
+```sh
 docker compose up -d --build
 ```
 
-Marketing: [http://localhost:3000](http://localhost:3000) (eller den port du sætter i `MARKETING_PORT`).
+Åbn [localhost:3000](http://localhost:3000/). Med standardindstillingerne viser booking mail som kontaktvej. [Bookingvejledningen](site/docs/BOOKING.md) viser, hvordan hele flowet testes med en simuleret kalender.
 
-Fejler `docker compose build` med npm- eller DNS-fejl? Se [site/docs/DOCKER-BUILD.md](site/docs/DOCKER-BUILD.md).
+Til arbejde på forsiden uden Docker kan du køre `npm ci` og `npm run dev` i `site/`. Opdatér både `package-lock.json` og `bun.lock`, når afhængighederne ændres.
 
-Flere containere (fx `app.mags.dk`, `auth.mags.dk`) tilføjes som nye `services:` i [`compose.yaml`](compose.yaml) med samme `mags_net`-netværk. Se [site/docs/CLOUDFLARE-TUNNEL.md](site/docs/CLOUDFLARE-TUNNEL.md) for tunnel → localhost-porte.
+## Produktion
 
-Lokal udvikling uden Docker: `cd site && npm run dev` som før.
-
-## Virksomhed
+Dokploys **MAGS Homepage** følger `main` og bruger `compose.yaml`. Cloudflare Tunnel peger på marketingsidens lokale port. API og PostgreSQL har ingen værtsporte. Se [tunnelopsætningen](site/docs/CLOUDFLARE-TUNNEL.md) og [aktivering af Outlook-booking](site/docs/BOOKING.md).
 
 **MAGS Solutions** · CVR 46436490 · enkeltmandsvirksomhed.

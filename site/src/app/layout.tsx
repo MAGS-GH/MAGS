@@ -1,56 +1,26 @@
 import type { Metadata } from "next";
-import { Calistoga, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import { JsonLdOrganization } from "@/components/marketing/json-ld";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
-});
-
-const calistoga = Calistoga({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-calistoga",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-  weight: ["400", "500"],
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
+const title = "MAGS Solutions · Webapps, integrationer og drift";
+const description = "Jeg bygger webapps, kobler dine systemer sammen og holder løsningen i drift. Se et eksempel, og book et gratis intromøde.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.domain),
-  title: {
-    default: `${siteConfig.companyName} · Udvikling og drift af platforme`,
-    template: `%s · ${siteConfig.companyName}`,
-  },
-  description:
-    "MAGS Solutions — udvikling og drift af platforme, webapps og hosting. TypeScript, iterationer og tæt samarbejde.",
-  openGraph: {
-    title: `${siteConfig.companyName} · Udvikling og drift af platforme`,
-    description:
-      "Byg og drift software med tydelige mål: hurtigere leverancer, stabil drift og skalerbar arkitektur.",
-    locale: "da_DK",
-    type: "website",
-    url: siteConfig.domain,
-  },
+  title: { default: title, template: "%s · MAGS Solutions" },
+  description,
+  openGraph: { title, description, locale: "da_DK", type: "website", url: siteConfig.domain },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="da"
-      className={`${inter.variable} ${calistoga.variable} ${jetbrains.variable} h-full`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="da" className={inter.variable + " " + playfair.variable + " h-full"}>
+      <body className="flex min-h-full flex-col">
+        <a className="skip-link" href="#indhold">Gå til indhold</a>
         <JsonLdOrganization />
         {children}
       </body>

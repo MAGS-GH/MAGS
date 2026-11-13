@@ -1,63 +1,48 @@
+"use client";
+
 import Link from "next/link";
-import { Container } from "@/components/marketing/container";
-import { isExternalHref, siteConfig } from "@/lib/site-config";
+import { useRef } from "react";
+import { siteConfig } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
-const nav = [
+const navigation = [
   { href: "/#ydelser", label: "Ydelser" },
+  { href: "/#samarbejde", label: "Sådan arbejder jeg" },
   { href: "/#om", label: "Om" },
-  { href: "/virksomhed", label: "Virksomhed" },
-  { href: "/#kontakt", label: "Kontakt" },
 ];
 
 export function SiteHeader({ className }: { className?: string }) {
+  const menu = useRef<HTMLDetailsElement>(null);
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 border-b border-border/80 bg-background/80 backdrop-blur-md",
-        className,
-      )}
-    >
-      <Container className="flex h-16 items-center justify-between gap-4 sm:h-[4.25rem]">
-        <Link
-          href="/"
-          className="font-display text-lg tracking-tight text-foreground sm:text-xl"
-        >
-          {siteConfig.companyName}
-        </Link>
-        <nav
-          className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex"
-          aria-label="Primær"
-        >
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="motion-safe-transition hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
+    <header className={cn("site-header", className)}>
+      <div className="editorial-shell site-header-inner">
+        <Link className="site-wordmark" href="/">{siteConfig.companyName}</Link>
+        <nav aria-label="Primær" className="desktop-nav">
+          {navigation.map(({ href, label }) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <Link
-          href={siteConfig.bookingUrl}
-          className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm motion-safe-transition hover:border-accent/30 hover:shadow-md md:hidden"
-          {...(isExternalHref(siteConfig.bookingUrl)
-            ? { target: "_blank", rel: "noopener noreferrer" }
-            : {})}
-        >
-          Book
-        </Link>
-        <Link
-          href={siteConfig.bookingUrl}
-          className="hidden rounded-xl bg-gradient-to-r from-accent to-accent-secondary px-5 py-2.5 text-sm font-medium text-accent-foreground shadow-sm motion-safe-transition hover:-translate-y-0.5 hover:shadow-accent md:inline-flex"
-          {...(isExternalHref(siteConfig.bookingUrl)
-            ? { target: "_blank", rel: "noopener noreferrer" }
-            : {})}
-        >
-          Book møde
-        </Link>
-      </Container>
+        <div className="header-actions">
+          <details className="mobile-nav" ref={menu} onKeyDown={(event) => {
+            if (event.key === "Escape" && menu.current?.open) {
+              menu.current.open = false;
+              menu.current.querySelector("summary")?.focus();
+            }
+          }}>
+            <summary>Menu</summary>
+            <nav aria-label="Primær">
+              {[...navigation, { href: "/virksomhed", label: "Virksomhedsoplysninger" }].map(({ href, label }) => (
+                <Link key={href} href={href} onClick={() => { if (menu.current) menu.current.open = false; }}>
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          </details>
+          <Link className="primary-action header-book" href={siteConfig.bookingUrl}>
+            <span className="header-book-full">Book et gratis intromøde</span>
+            <span className="header-book-short">Book møde</span>
+          </Link>
+        </div>
+      </div>
     </header>
   );
 }

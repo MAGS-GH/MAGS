@@ -1,21 +1,9 @@
-# mags-site
+# MAGS web
 
-Marketingweb for **mags.dk** (Next.js + TypeScript + Tailwind).
+Next.js 16 med App Router, Tailwind CSS og Three.js. [Repoets README](../README.md) dækker lokal opstart og produktion.
 
-Se repo-roden for overblik: [../README.md](../README.md).
+- `npm run dev` starter udviklingsserveren.
+- `npm run lint` kontrollerer koden.
+- `npm run build` laver produktionsbuild.
 
-## Scripts
-
-- `npm run dev` — udvikling
-- `npm run build` / `npm run start` — produktion
-- `npm run lint` — ESLint
-
-## Miljø
-
-Kopier `.env.example` til `.env.local` og sæt booking-URL og e-mail.
-
-**Docker:** Afhængigheder i image installeres med **Bun** fra `bun.lock`. Efter `npm install` lokalt, kør `bun install` i `site/` så `bun.lock` matcher (eller kun `bun install` hvis du bruger Bun overalt).
-
-## Deploy
-
-**Produktion:** Brug Docker Compose i repo-roden — se [../README.md](../README.md) og [docs/CLOUDFLARE-TUNNEL.md](docs/CLOUDFLARE-TUNNEL.md). Ved build-fejl: [docs/DOCKER-BUILD.md](docs/DOCKER-BUILD.md).
+Ved ændring af afhængigheder skal både npm- og Bun-lockfilen opdateres. Docker bruger Bun til installation og Node til build og runtime.

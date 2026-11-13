@@ -1,23 +1,59 @@
-# MAGS — Docker Compose (alle tjenester samlet)
-# Brug: kopier .env.example til .env i roden, kør: docker compose up -d --build
-# Tilføj flere services (app, auth, …) som egne entries med samme network.
-
 name: mags
 
 services:
   marketing:
     build:
       context: ./site
-      dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_BOOKING_URL: ${NEXT_PUBLIC_BOOKING_URL:-}
-        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-mags@mags.dk}
     container_name: mags-marketing
     ports:
-      - "${MARKETING_PORT:-3000}:3000"
+      - "127.0.0.1:${MARKETING_PORT:-3000}:3000"
+    environment:
+      BOOKING_API_URL: http://booking-api:8080
+      BOOKING_ENABLED: ${BOOKING_ENABLED:-false}
+      BOOKING_MODE: ${BOOKING_MODE:-disabled}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
     restart: unless-stopped
-    # Senere: depends_on, env_file, labels, osv.
+
+  booking-api:
+    profiles: [booking]
+    build: ./api
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${BOOKING_ASPNETCORE_ENVIRONMENT:-Production}
+      Booking__Mode: ${BOOKING_MODE:-disabled}
+      Booking__TenantId: ${BOOKING_TENANT_ID:-}
+      Booking__ClientId: ${BOOKING_CLIENT_ID:-}
+      Booking__ClientSecret: ${BOOKING_CLIENT_SECRET:-}
+      Booking__Mailbox: ${BOOKING_MAILBOX:-}
+      Booking__TurnstileSecret: ${TURNSTILE_SECRET:-}
+      Booking__TurnstileHostname: ${TURNSTILE_HOSTNAMES:-mags.dk,www.mags.dk}
+      Booking__RequestHashKey: ${BOOKING_REQUEST_HASH_KEY:-}
+      ConnectionStrings__Booking: ${BOOKING_DATABASE_CONNECTION:-}
+    depends_on:
+      booking-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  booking-db:
+    profiles: [booking]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: booking
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: ${BOOKING_DB_PASSWORD:-}
+    volumes:
+      - booking-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "booking", "-d", "booking"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
 
 networks:
   default:
-    name: mags_net
+    name: ${MAGS_NETWORK_NAME:-mags_net}
+
+volumes:
+  booking-data:

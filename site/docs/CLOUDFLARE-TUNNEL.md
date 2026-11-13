@@ -27,7 +27,7 @@ DNS-poster for `mags.dk` / underdomæner peger mod tunnel som beskrevet i Cloudf
 
 ## Miljøvariabler
 
-**Docker Compose (anbefalet):** I **repo-roden** kopierer du `.env.example` til `.env` og sætter `NEXT_PUBLIC_BOOKING_URL` og `NEXT_PUBLIC_CONTACT_EMAIL`. De sendes ind som **build args** til Next.js (indbages ved `docker compose build`).
+**Docker Compose:** `NEXT_PUBLIC_CONTACT_EMAIL` er en build-variabel til Next.js. Booking indstilles ved runtime som beskrevet i [BOOKING.md](BOOKING.md). Kun marketing har en værtsport.
 
 **Lokal npm:** Brug `site/.env.local` som beskrevet i `site/README.md`.
 
@@ -46,9 +46,8 @@ Alternativt enkelt image fra `site/`:
 ```bash
 cd site
 docker build -t mags-marketing \
-  --build-arg NEXT_PUBLIC_BOOKING_URL="https://..." \
   --build-arg NEXT_PUBLIC_CONTACT_EMAIL="mags@mags.dk" .
-docker run -p 3000:3000 mags-marketing
+docker run -p 127.0.0.1:3000:3000 mags-marketing
 ```
 
 Tunnelen peger på den port, hvor marketing-containeren er mappet ud (typisk `http://127.0.0.1:3000` for `mags.dk`).

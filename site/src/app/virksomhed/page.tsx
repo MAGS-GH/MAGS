@@ -15,7 +15,7 @@ export default function VirksomhedPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="indhold" className="flex-1">
         <Section className="pt-12 sm:pt-16">
           <Container className="max-w-3xl">
             <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
