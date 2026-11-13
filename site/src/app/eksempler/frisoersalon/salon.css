@@ -91,6 +91,19 @@
 .salon-contact h2 { max-width: 24ch; }
 .salon-contact h2 + p { margin-top: 1rem; }
 
+@media (min-width: 791px) {
+  .salon-story #bekraeftelse .workshop-chapter-frame { align-items: start; padding-block-start: clamp(1rem, 4svh, 2.5rem); }
+}
+
+@media (min-width: 1081px) and (max-width: 1240px) {
+  .salon-story #frisoer .salon-panel { width: min(100%, 23rem); }
+}
+
+@media (min-width: 791px) and (max-width: 1080px) {
+  .salon-story #frisoer .workshop-chapter-frame { align-items: start; }
+  .salon-story #frisoer .salon-panel, .salon-story #bekraeftelse .salon-panel { width: min(100%, 22rem); }
+}
+
 @media (max-width: 790px) {
   .salon-intro { align-items: end; padding-block: 2rem 7rem; }
   .salon-intro h1 { font-size: clamp(2.75rem, 10.5vw, 5rem); }

@@ -1,15 +1,14 @@
 "use client";
 
 import { getImageProps } from "next/image";
-import { useCallback } from "react";
 import { useScrollScene } from "@/components/marketing/use-scroll-scene";
 import { SalonBookingStep, useSalonBooking } from "./booking-demo";
-import type { SalonSceneState } from "./scene";
+import { initialSalonDisplay } from "./display-state";
 
 const chapters = [
-  { id: "behandling", name: "Behandling", progress: .22, title: "Hvad skal du have lavet?", description: "Behandlingen afgør, hvor længe frisøren skal have en ledig stol." },
-  { id: "frisoer", name: "Frisør", progress: .46, title: "Har du en fast frisør?", description: "Hver frisør har sin egen kalender. Du kan også søge på tværs af hele holdet." },
-  { id: "tid", name: "Tid", progress: .72, title: "Vælg en tid, der passer", description: "Du ser de tider, hvor der er plads til hele behandlingen i én frisørs kalender." },
+  { id: "behandling", name: "Behandling", progress: .22, title: "Hvad skal du have lavet?", description: "Skift behandling, og se varigheden på receptionens skærm." },
+  { id: "frisoer", name: "Frisør", progress: .46, title: "Har du en fast frisør?", description: "Se på skiltene, hvem der tilbyder behandlingen. Den valgte frisørs spejl lyser op." },
+  { id: "tid", name: "Tid", progress: .72, title: "Vælg en tid, der passer", description: "Skærmen i receptionen viser, hvor der er plads til hele behandlingen." },
   { id: "bekraeftelse", name: "Bekræftelse", progress: 1, title: "Aftalen i salonens kalender", description: "Se, hvad kunden får bekræftet, og hvor aftalen lander hos frisøren." },
 ] as const;
 
@@ -36,11 +35,8 @@ function SalonPoster({ name, opening = false }: { name: string; opening?: boolea
 export function SalonStory() {
   const {
     active, canvas, intro, live, sections, stage, staticView, unavailable, setSceneState, toggleStaticView,
-  } = useScrollScene<SalonSceneState>(chapters, loadSalon, { station: null, confirmed: false });
-  const onBookingSceneChange = useCallback((station: number | null, confirmed: boolean) => {
-    setSceneState({ station, confirmed });
-  }, [setSceneState]);
-  const booking = useSalonBooking(onBookingSceneChange);
+  } = useScrollScene(chapters, loadSalon, initialSalonDisplay);
+  const booking = useSalonBooking(setSceneState);
 
   return (
     <section className="workshop salon-story" aria-labelledby="salon-title">

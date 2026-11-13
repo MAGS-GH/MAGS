@@ -1,32 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   formatSalonTime, salonAvailability, salonDays, stylists, treatments,
   type SalonDay, type StylistId, type TreatmentId,
 } from "./availability";
+import { initialSalonDisplay, type SalonDisplayState } from "./display-state";
 
-type BookingSelection = {
-  treatment: TreatmentId;
-  stylistId: StylistId | null;
-  day: SalonDay;
-  slotStart: number | null;
-  confirmed: boolean;
-};
+type BookingSelection = Omit<SalonDisplayState, "slot"> & { slotStart: number | null };
 
 const initialSelection: BookingSelection = {
-  treatment: "klipning", stylistId: null, day: "tirsdag", slotStart: null, confirmed: false,
+  treatment: initialSalonDisplay.treatment,
+  stylistId: initialSalonDisplay.stylistId,
+  day: initialSalonDisplay.day,
+  slotStart: null,
+  confirmed: initialSalonDisplay.confirmed,
 };
 
-export function useSalonBooking(onSceneChange: (station: number | null, confirmed: boolean) => void) {
+export function useSalonBooking(onSceneChange: (state: SalonDisplayState) => void) {
   const [selection, setSelection] = useState(initialSelection);
-  const slots = salonAvailability(selection.day, selection.treatment, selection.stylistId);
-  const slot = slots.find(({ start }) => start === selection.slotStart);
-  const station = slot?.stylist.station ?? stylists.find(({ id }) => id === selection.stylistId)?.station ?? null;
+  const { day, treatment, stylistId, slotStart, confirmed } = selection;
+  const slots = useMemo(() => salonAvailability(day, treatment, stylistId), [day, treatment, stylistId]);
+  const slot = slots.find(({ start }) => start === slotStart);
 
   useEffect(() => {
-    onSceneChange(station, selection.confirmed);
-  }, [onSceneChange, selection.confirmed, station]);
+    onSceneChange({
+      day, treatment, stylistId, confirmed,
+      slot: slot ? { start: slot.start, end: slot.end, stylistId: slot.stylist.id } : null,
+    });
+  }, [onSceneChange, day, treatment, stylistId, confirmed, slot]);
 
   function selectTreatment(treatment: TreatmentId) {
     setSelection((previous) => {
@@ -60,7 +62,7 @@ export function useSalonBooking(onSceneChange: (station: number | null, confirme
   }
 
   return {
-    ...selection, station, slots, slot, selectTreatment, selectStylist, selectDay, selectSlot, confirm,
+    ...selection, slots, slot, selectTreatment, selectStylist, selectDay, selectSlot, confirm,
     reset: () => setSelection(initialSelection),
   };
 }

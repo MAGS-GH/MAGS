@@ -1,19 +1,18 @@
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import type { SalonDisplayState } from "./display-state";
 import { createSalonModel } from "./model";
-
-export type SalonSceneState = { station: number | null; confirmed: boolean };
 
 type Point = [number, number, number];
 type Shot = { at: number; position: Point; target: Point; fieldOfView: number; offset: number };
 
 const shots: Shot[] = [
   { at: 0, position: [-1.45, 1.61, 4.07], target: [.46, 1.43, -2.66], fieldOfView: 44, offset: .12 },
-  { at: .22, position: [.86, 1.65, 2.56], target: [2.48, 1.04, .82], fieldOfView: 42, offset: .16 },
-  { at: .46, position: [1.64, 1.52, 2.22], target: [-.28, 1.36, -2.29], fieldOfView: 48, offset: .12 },
-  { at: .72, position: [-1.43, 1.79, 1.04], target: [.41, 1.22, -2.22], fieldOfView: 47, offset: .14 },
-  { at: 1, position: [-1.17, 1.99, 4.37], target: [.48, 1.39, -2.64], fieldOfView: 43, offset: .1 },
+  { at: .22, position: [1.13, 1.52, 2.24], target: [2.29, 1.18, .93], fieldOfView: 40, offset: .16 },
+  { at: .46, position: [1.02, 1.57, 2.69], target: [.09, 1.48, -2.46], fieldOfView: 45, offset: .16 },
+  { at: .72, position: [1.95, 1.62, 2.23], target: [2.33, 1.19, .94], fieldOfView: 43, offset: .16 },
+  { at: 1, position: [-1.04, 1.96, 4.51], target: [.65, 1.39, -2.52], fieldOfView: 44, offset: .06 },
 ];
 
 export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () => void) {
@@ -75,12 +74,11 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
   let width = 0;
   let height = 0;
   let lastProgress = -1;
-  let lastStation: number | null = null;
-  let lastConfirmed = false;
-  let changingLight = false;
+  let lastDisplay: SalonDisplayState | null = null;
+  let changing = false;
   let contextLost = false;
 
-  function render(progress: number, { station, confirmed }: SalonSceneState, elapsed: number) {
+  function render(progress: number, display: SalonDisplayState, elapsed: number) {
     if (contextLost || document.hidden) return false;
     const newWidth = canvas.clientWidth;
     const newHeight = canvas.clientHeight;
@@ -94,13 +92,9 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
       model.resize(width);
     }
 
-    const highlighted = progress >= .32 ? station : null;
-    const booked = confirmed && progress >= .82;
-    const changedLight = highlighted !== lastStation || booked !== lastConfirmed || changingLight;
-    if (!resized && progress === lastProgress && !changedLight) return false;
-    changingLight = model.update(highlighted, booked, lastProgress < 0 ? 10000 : elapsed);
-    lastStation = highlighted;
-    lastConfirmed = booked;
+    if (!resized && progress === lastProgress && display === lastDisplay && !changing) return false;
+    changing = model.update(display, progress, lastProgress < 0 ? 10000 : elapsed);
+    lastDisplay = display;
 
     if (resized || progress !== lastProgress) {
       const index = Math.max(1, shots.findIndex(({ at }) => at >= progress));
@@ -113,15 +107,17 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
       const aspect = width / height;
       const wide = width > 790;
       const framing = wide ? lerp(from.offset, to.offset, amount) : 0;
-      const fieldOfView = lerp(from.fieldOfView, to.fieldOfView, amount);
+      const staffWidening = wide ? 7 * (1 - THREE.MathUtils.smoothstep(Math.abs(progress - .46), 0, .24)) : 0;
+      const portraitFinale = wide ? 0 : THREE.MathUtils.smoothstep(progress, .72, 1);
+      const fieldOfView = lerp(from.fieldOfView, to.fieldOfView, amount) + staffWidening + portraitFinale * 5;
 
       camera.position.set(
         lerp(from.position[0], to.position[0], amount) + arc * (index % 2 ? -.17 : .23),
         lerp(from.position[1], to.position[1], amount) + arc * .09,
-        lerp(from.position[2], to.position[2], amount) + arc * .2,
+        lerp(from.position[2], to.position[2], amount) + arc * .2 + portraitFinale * .65,
       );
       target.set(
-        lerp(from.target[0], to.target[0], amount),
+        lerp(from.target[0], to.target[0], amount) + portraitFinale * .4,
         lerp(from.target[1], to.target[1], amount),
         lerp(from.target[2], to.target[2], amount),
       );
@@ -132,7 +128,7 @@ export async function mountSalon(canvas: HTMLCanvasElement, onUnavailable: () =>
     }
 
     renderer.render(scene, camera);
-    return changingLight;
+    return changing;
   }
 
   function handleContextLost(event: Event) {

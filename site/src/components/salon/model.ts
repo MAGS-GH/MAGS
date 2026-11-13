@@ -1,20 +1,105 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
-import { stylists, treatments } from "./availability";
-const stationPositions = [-2.5, -0.15, 2.2];
+import { formatSalonTime, salonAvailability, salonDays, stylists, treatments } from "./availability";
+import type { SalonDisplayState } from "./display-state";
 
-function paintTexture(width: number, height: number, draw: (context: CanvasRenderingContext2D) => void, color = true) {
+const stationPositions = [-2.5, -0.15, 2.2];
+const tabletWidth = 640;
+const tabletHeight = 448;
+const plateWidth = 480;
+const plateHeight = 144;
+
+type DisplayPhase = "welcome" | "treatment" | "stylist" | "time" | "review";
+type DisplayTone = "neutral" | "selected" | "confirmed" | "muted";
+
+const displayTones = {
+  neutral: { background: "#342e26", title: "#fff1d9", detail: "#e2c49e", dot: "#a38a6a" },
+  selected: { background: "#384536", title: "#fff9e7", detail: "#e2eac8", dot: "#d6dfa5" },
+  confirmed: { background: "#263f34", title: "#f5fff0", detail: "#cce9c9", dot: "#acdaa5" },
+  muted: { background: "#352e2c", title: "#e1d4c6", detail: "#c1ab9b", dot: "#997a70" },
+} as const;
+
+function displayPhase(progress: number): DisplayPhase {
+  if (progress >= .86) return "review";
+  if (progress >= .59) return "time";
+  if (progress >= .34) return "stylist";
+  if (progress >= .11) return "treatment";
+  return "welcome";
+}
+
+function tabletMessage(display: SalonDisplayState, phase: DisplayPhase) {
+  const { treatment, stylistId, slot, day, confirmed } = display;
+  const selected = stylists.find(({ id }) => id === stylistId);
+  const assigned = stylists.find(({ id }) => id === slot?.stylistId);
+  const service = treatments[treatment];
+  const dayName = salonDays[day];
+  const time = slot ? `${formatSalonTime(slot.start)}–${formatSalonTime(slot.end)}` : null;
+
+  if (phase === "welcome" || phase === "treatment") {
+    return { phase: "BEHANDLING", title: "Vælg behandling", detail: service.name, sub: `${service.minutes} min.` };
+  }
+  if (phase === "stylist") {
+    return { phase: "FRISØR", title: "Vælg frisør", detail: selected?.name ?? "Første ledige", sub: service.name };
+  }
+  if (phase === "time") {
+    const first = slot ? null : salonAvailability(day, treatment, stylistId)[0];
+    return {
+      phase: "TIDSPUNKT", title: dayName,
+      detail: time ?? (first ? `${formatSalonTime(first.start)} · ${first.stylist.name}` : "Ingen ledige tider"),
+      sub: time ? (assigned?.name ?? service.name) : first ? "Første ledige tid" : (selected?.name ?? service.name),
+    };
+  }
+  return {
+    phase: "BEKRÆFTELSE", title: confirmed && slot ? "Tid reserveret" : "Din aftale",
+    detail: slot ? `${dayName} ${formatSalonTime(slot.start)}` : "Vælg et tidspunkt",
+    sub: assigned ? `${service.name} hos ${assigned.name}` : service.name,
+  };
+}
+
+function nameplateMessage(stylist: typeof stylists[number], display: SalonDisplayState, phase: DisplayPhase): [string, DisplayTone] {
+  if (phase === "welcome") return [stylist.treatments.length > 1 ? "Klipning og farve" : "Klipning", "neutral"];
+  const { treatment, stylistId, slot, day, confirmed } = display;
+  if (!stylist.treatments.includes(treatment)) return ["Tilbyder klipning", "muted"];
+  if (phase === "treatment") return [treatments[treatment].name, "neutral"];
+  if (phase === "stylist") return stylistId === stylist.id
+    ? ["Valgt frisør", "selected"]
+    : [treatments[treatment].name, "neutral"];
+
+  if (slot?.stylistId === stylist.id) {
+    if (phase === "review" && confirmed) return [`Reserveret ${formatSalonTime(slot.start)}`, "confirmed"];
+    return [`Valgt tid ${formatSalonTime(slot.start)}`, "selected"];
+  }
+
+  const first = salonAvailability(day, treatment, stylist.id)[0];
+  const detail = first ? `Ledig ${formatSalonTime(first.start)}` : "Ingen ledig tid";
+  return [detail, stylistId === stylist.id ? "selected" : first ? "neutral" : "muted"];
+}
+
+function createTextureCanvas(width: number, height: number, color = true) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Salon texture canvas is unavailable");
-  draw(context);
-  const texture = new THREE.CanvasTexture(canvas);
-  if (color) texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  return texture;
+  const image = new THREE.CanvasTexture(canvas);
+  if (color) image.colorSpace = THREE.SRGBColorSpace;
+  image.anisotropy = 4;
+  return { image, context };
+}
+
+function writableTexture(width: number, height: number) {
+  const { image, context } = createTextureCanvas(width, height);
+  let lastKey: string | undefined;
+  return {
+    image,
+    paint(key: string, draw: (context: CanvasRenderingContext2D) => void) {
+      if (lastKey === key) return;
+      draw(context);
+      image.needsUpdate = true;
+      lastKey = key;
+    },
+  };
 }
 
 function noise(seed: number) {
@@ -56,7 +141,8 @@ export async function createSalonModel() {
   }
 
   function texture(width: number, height: number, draw: (context: CanvasRenderingContext2D) => void, color = true) {
-    const image = paintTexture(width, height, draw, color);
+    const { image, context } = createTextureCanvas(width, height, color);
+    draw(context);
     textures.push(image);
     return image;
   }
@@ -264,8 +350,8 @@ export async function createSalonModel() {
   }
   const mirrorGlass = physical({ color: "#ddd8cb", map: fauxMirrorMap, metalness: .65, roughness: .11, envMapIntensity: .76, clearcoat: 1 });
   const mirrorLights: THREE.MeshBasicMaterial[] = [];
-  const plateColors = ["#594334", "#4d5448", "#3a4443"];
-  const nameGeometry = storeGeometry(new THREE.PlaneGeometry(.31, .076));
+  const nameGeometry = storeGeometry(new THREE.PlaneGeometry(.49, .147));
+  const plates: ReturnType<typeof writableTexture>[] = [];
   const amberBottle = standard({ color: "#71503a", roughness: .40 });
   const greenBottle = standard({ color: "#495542", roughness: .46 });
 
@@ -320,17 +406,11 @@ export async function createSalonModel() {
     mesh(mirrorHalo, halo, station, 0, 1.93, .026, false);
     const face = mesh(mirrorFace, mirrorGlass, station, 0, 1.93, .051, false);
     mirroredFaces.push(face);
-    box(station, matteBlack, [.338, .093, .026], [0, 1.017, .021], .009);
-    const name = texture(256, 64, (context) => {
-      context.fillStyle = plateColors[index];
-      context.fillRect(0, 0, 256, 64);
-      context.fillStyle = "#f5ddbc";
-      context.font = "500 29px Georgia, serif";
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText(stylists[index].name, 128, 34);
-    });
-    mesh(nameGeometry, basic({ map: name, toneMapped: false }), station, 0, 1.017, .037, false);
+    box(station, matteBlack, [.52, .17, .026], [0, 1.33, .066], .012);
+    const plate = writableTexture(plateWidth, plateHeight);
+    plates.push(plate);
+    textures.push(plate.image);
+    mesh(nameGeometry, basic({ map: plate.image, toneMapped: false }), station, 0, 1.33, .082, false);
     box(station, oak, [1.74, .108, .444], [0, .899, .178], .020);
     box(station, oiledOak, [1.51, .163, .312], [0, .791, .14], .018);
     box(station, bronze, [.228, .014, .022], [0, .815, .302], .006, false);
@@ -383,54 +463,10 @@ export async function createSalonModel() {
   box(reception, matteBlack, [.208, .020, .171], [-.44, 1.066, -.015], .010);
   box(reception, matteBlack, [.051, .16, .052], [-.44, 1.143, -.044], .014).rotation.x = -.20;
   box(tablet, matteBlack, [.455, .322, .036], [0, 0, 0], .027);
-  const tabletInk = texture(512, 360, (context) => {
-    context.fillStyle = "#eee7d8";
-    context.fillRect(0, 0, 512, 360);
-    context.fillStyle = "#44382d";
-    context.font = "42px Georgia, serif";
-    context.fillText("Salonbooking", 40, 82);
-    context.fillStyle = "#7b6854";
-    context.font = "18px Arial, sans-serif";
-    context.fillText("Vælg din behandling", 42, 125);
-    for (const [line, treatment] of Object.values(treatments).entries()) {
-      const y = 154 + 64 * line;
-      context.fillStyle = line === 0 ? "#a79078" : "#d8cbb7";
-      context.beginPath();
-      context.roundRect(40, y, 432, 46, 8);
-      context.fill();
-      context.fillStyle = line === 0 ? "#f9f0dd" : "#483d2d";
-      context.font = "21px Arial, sans-serif";
-      context.fillText(treatment.name, 57, y + 30);
-    }
-  });
+  const tabletScreen = writableTexture(tabletWidth, tabletHeight);
+  textures.push(tabletScreen.image);
   const tabletPlane = storeGeometry(new THREE.PlaneGeometry(.414, .278));
-  mesh(tabletPlane, basic({ map: tabletInk, toneMapped: false }), tablet, 0, 0, .019, false);
-  const confirmedMap = texture(512, 360, (context) => {
-    context.fillStyle = "#e6e6d7";
-    context.fillRect(0, 0, 512, 360);
-    context.fillStyle = "#4c624b";
-    context.beginPath();
-    context.arc(256, 122, 39, 0, Math.PI * 2);
-    context.fill();
-    context.strokeStyle = "#f6eee3";
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.lineWidth = 6;
-    context.beginPath();
-    context.moveTo(240, 123);
-    context.lineTo(252, 134);
-    context.lineTo(273, 110);
-    context.stroke();
-    context.fillStyle = "#3b4b38";
-    context.font = "39px Georgia, serif";
-    context.textAlign = "center";
-    context.fillText("Tid reserveret", 256, 220);
-    context.fillStyle = "#646b59";
-    context.font = "20px Arial, sans-serif";
-    context.fillText("Eksempel på en bekræftelse", 256, 262);
-  });
-  const confirmationScreen = mesh(tabletPlane, basic({ map: confirmedMap, toneMapped: false }), tablet, 0, 0, .020, false);
-  confirmationScreen.visible = false;
+  mesh(tabletPlane, basic({ map: tabletScreen.image, toneMapped: false }), tablet, 0, 0, .019, false);
   const receptionTray = box(reception, bronze, [.39, .018, .192], [.60, 1.068, .092], .012);
   receptionTray.rotation.y = -.08;
   box(reception, ivory, [.193, .012, .106], [.58, 1.083, .101], .006, false).rotation.y = -.14;
@@ -519,13 +555,72 @@ export async function createSalonModel() {
   const bookedLight = new THREE.Color("#d3e8bb");
   const current = [0, 0, 0];
   const booked = [0, 0, 0];
+  let lastDisplay = "";
 
-  function update(station: number | null, confirmed: boolean, elapsed: number) {
+  function refreshScreens(display: SalonDisplayState, phase: DisplayPhase) {
+    const { treatment, stylistId, day, slot, confirmed } = display;
+    const displayKey = [phase, treatment, stylistId, day, slot?.stylistId, slot?.start, slot?.end, confirmed].join("/");
+    if (lastDisplay === displayKey) return;
+    lastDisplay = displayKey;
+
+    for (const stylist of stylists) {
+      const [detail, tone] = nameplateMessage(stylist, display, phase);
+      const colors = displayTones[tone];
+      plates[stylist.station].paint(`${detail}/${tone}`, (context) => {
+        context.fillStyle = colors.background;
+        context.fillRect(0, 0, plateWidth, plateHeight);
+        context.fillStyle = colors.dot;
+        context.beginPath();
+        context.arc(42, 42, 9, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = colors.title;
+        context.font = "600 52px Georgia, serif";
+        context.fillText(stylist.name, 67, 64, 390);
+        context.fillStyle = colors.detail;
+        context.font = "600 31px Arial, sans-serif";
+        context.fillText(detail, 67, 112, 390);
+      });
+    }
+
+    const message = tabletMessage(display, phase);
+    const bookingDone = phase === "review" && confirmed && slot !== null;
+    const colors = displayTones[bookingDone ? "confirmed" : "selected"];
+    tabletScreen.paint(`${message.phase}/${message.title}/${message.detail}/${message.sub}/${bookingDone}`, (context) => {
+      context.fillStyle = bookingDone ? "#ecf0e4" : "#f1e8da";
+      context.fillRect(0, 0, tabletWidth, tabletHeight);
+      context.fillStyle = "#615448";
+      context.font = "700 26px Arial, sans-serif";
+      context.fillText(`SALONBOOKING  /  ${message.phase}`, 40, 71, 560);
+      context.fillStyle = "#2e2922";
+      context.font = "600 62px Georgia, serif";
+      context.fillText(message.title, 37, 151, 566);
+      context.fillStyle = colors.background;
+      context.beginPath();
+      context.roundRect(38, 200, 564, 192, 21);
+      context.fill();
+      context.fillStyle = colors.dot;
+      context.beginPath();
+      context.arc(81, 272, 10, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = colors.title;
+      context.font = "600 49px Georgia, serif";
+      context.fillText(message.detail, 112, 289, 455);
+      context.fillStyle = colors.detail;
+      context.font = "600 30px Arial, sans-serif";
+      context.fillText(message.sub, 112, 345, 455);
+    });
+  }
+
+  function update(display: SalonDisplayState, progress: number, elapsed: number) {
+    const phase = displayPhase(progress);
+    refreshScreens(display, phase);
+    const highlightedId = progress >= .34 ? display.slot?.stylistId ?? display.stylistId : null;
+    const bookedId = phase === "review" && display.confirmed ? display.slot?.stylistId : null;
     let changing = false;
     const weight = -Math.expm1(-Math.max(0, elapsed) / 145);
-    for (let index = 0; index < mirrorLights.length; index++) {
-      const active = station === index ? 1 : 0;
-      const done = confirmed && station === index ? 1 : 0;
+    for (const { id, station: index } of stylists) {
+      const active = highlightedId === id ? 1 : 0;
+      const done = bookedId === id ? 1 : 0;
       current[index] += (active - current[index]) * weight;
       booked[index] += (done - booked[index]) * weight;
       if (Math.abs(active - current[index]) < .004) current[index] = active;
@@ -533,7 +628,6 @@ export async function createSalonModel() {
       changing ||= current[index] !== active || booked[index] !== done;
       mirrorLights[index].color.copy(idleLight).lerp(selectedLight, current[index]).lerp(bookedLight, booked[index]);
     }
-    confirmationScreen.visible = confirmed;
     return changing;
   }
 
