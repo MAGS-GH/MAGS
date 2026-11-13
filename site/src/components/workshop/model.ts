@@ -14,40 +14,46 @@ export function createWorkshopModel() {
     materials.add(material);
     return material;
   };
-  const whiteStone = matte("#e8d3b9", { map: surfaces.stone });
-  const oak = matte("#dfae86", { map: surfaces.oak, roughness: 0.49 });
-  const ivory = matte("#f7e8d4", { roughness: 0.46 });
-  const paper = matte("#fff0da", { roughness: 0.73 });
-  const cream = matte("#f3e2cc");
-  const brown = matte("#8c5d45", { roughness: 0.48 });
-  const fileBeige = matte("#bc8c61");
-  const fileTan = matte("#cda778");
-  const fileAccent = matte("#a97a58");
-  const brass = matte("#ad7042", { metalness: 0.67, roughness: 0.32 });
-  const dark = matte(ink, { metalness: 0.15, roughness: 0.38 });
-  const conveyor = matte("#554657", { roughness: 0.84 });
-  const red = matte("#c63718", { roughness: 0.45 });
-  const redEdge = matte("#c05837");
-  const cordLight = matte("#e8542f", { emissive: "#ff4b15", emissiveIntensity: 0.45 });
-  const selected = matte("#44336f", { emissive: "#382672", emissiveIntensity: 0.1 });
+  const porcelain = matte("#f3decb", { map: surfaces.stone, roughness: 0.69 });
+  const walnut = matte("#fff6ed", { map: surfaces.walnut, roughness: 0.47 });
+  const ivory = matte("#f6e1ca", { roughness: 0.45 });
+  const paper = matte("#fff3df", { roughness: 0.78 });
+  const cream = matte("#d0aa90");
+  const brown = matte("#553427", { roughness: 0.55 });
+  const fileBeige = matte("#b88056");
+  const fileTan = matte("#d1a176");
+  const fileAccent = matte("#9f694e");
+  const copper = matte("#c78e68", { metalness: 0.72, roughness: 0.29 });
+  const dark = new THREE.MeshPhysicalMaterial({
+    color: ink,
+    metalness: 0.14,
+    roughness: 0.36,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.24,
+  });
+  materials.add(dark);
+  const conveyor = matte("#533b42", { roughness: 0.89 });
+  const red = matte("#b43d27", { roughness: 0.62 });
+  const redEdge = matte("#b24e36");
+  const cordLight = matte("#e76b34", { emissive: "#ff541f", emissiveIntensity: 0.48 });
+  const selected = matte("#503654", { emissive: "#402747", emissiveIntensity: 0.14 });
   const glass = new THREE.MeshPhysicalMaterial({
-    color: "#f6dfc6",
-    metalness: 0.05,
-    roughness: 0.24,
-    clearcoat: 1,
+    color: "#d7a886",
+    roughness: 0.30,
+    clearcoat: 0.9,
     clearcoatRoughness: 0.16,
     transparent: true,
-    opacity: 0.53,
+    opacity: 0.40,
     depthWrite: false,
   });
   materials.add(glass);
   const glassRim = new THREE.MeshPhysicalMaterial({
-    color: "#e9caa6",
-    metalness: 0.17,
-    roughness: 0.24,
-    clearcoat: 0.89,
+    color: "#a8755c",
+    metalness: 0.08,
+    roughness: 0.28,
+    clearcoat: 0.85,
     transparent: true,
-    opacity: 0.59,
+    opacity: 0.39,
     depthWrite: false,
   });
   materials.add(glassRim);
@@ -90,7 +96,7 @@ export function createWorkshopModel() {
   ) {
     // Graphics printed on the model remain legible as the camera gets close.
     const material = new THREE.MeshBasicMaterial({
-      map: texture, color: "#f6e6d5", alphaTest: 0.45, polygonOffset: true, polygonOffsetFactor: -1,
+      map: texture, toneMapped: false, alphaTest: 0.45, polygonOffset: true, polygonOffsetFactor: -1,
     });
     materials.add(material);
     const panel = mesh(new THREE.PlaneGeometry(width, height), material, parent, point);
@@ -99,7 +105,7 @@ export function createWorkshopModel() {
     return panel;
   }
 
-  function plinth(parent: THREE.Group, width: number, depth: number, material = oak) {
+  function plinth(parent: THREE.Group, width: number, depth: number, material = walnut) {
     box(parent, material, [width, 0.20, depth], [0, 0.13, 0], 0.10);
     box(parent, brown, [width - 0.08, 0.045, depth - 0.08], [0, 0.04, 0], 0.022, 1);
   }
@@ -132,10 +138,12 @@ export function createWorkshopModel() {
 
   const contact = new THREE.MeshBasicMaterial({ map: surfaces.shadow, transparent: true, depthWrite: false });
   materials.add(contact);
-  const ambientShadow = mesh(new THREE.PlaneGeometry(13.8, 9.1), contact, root, [0.25, -0.60, 0.2]);
+  const ambientShadow = mesh(new THREE.PlaneGeometry(13.8, 9.1), contact, root, [0.25, -0.546, 0.2]);
   ambientShadow.rotation.x = -Math.PI / 2;
-  box(root, oak, [9.35, 0.22, 6.2], [0, -0.40, 0], 0.11, 3);
-  box(root, whiteStone, [9.6, 0.44, 6.45], [0, -0.21, 0], 0.22, 3);
+  ambientShadow.receiveShadow = false;
+  box(root, walnut, [9.55, 0.26, 6.40], [0, -0.38, 0], 0.13, 3);
+  box(root, porcelain, [9.6, 0.32, 6.45], [0, -0.15, 0], 0.16, 3);
+  box(root, copper, [9.46, 0.025, 6.31], [0, -0.32, 0], 0.012, 2);
   box(root, brown, [9.2, 0.045, 6.05], [0, -0.52, 0], 0.021, 2);
 
   const inquiry = group(root, [-3.35, 0, -0.83], -0.20);
@@ -146,25 +154,25 @@ export function createWorkshopModel() {
   box(inquiryScreen, glassRim, [1.61, 2.51, 0.18], [0, 0, -0.07], 0.08, 3);
   inset(inquiryScreen, surfaces.form, 1.31, 1.94, [0, -0.08, 0.125]);
   for (const x of [-0.52, -0.38, -0.24]) {
-    const dot = cylinder(inquiryScreen, brass, 0.037, 0.022, [x, 1.05, 0.135]);
+    const dot = cylinder(inquiryScreen, copper, 0.037, 0.022, [x, 1.05, 0.135]);
     dot.rotation.x = Math.PI / 2;
   }
   for (const x of [-0.57, 0.57]) {
-    cylinder(inquiry, brass, 0.09, 0.21, [x, 0.31, -0.06]);
+    cylinder(inquiry, copper, 0.09, 0.21, [x, 0.31, -0.06]);
   }
 
   const rail = group(root, [-0.88, 0, -0.89]);
   box(rail, brown, [4.65, 0.18, 0.83], [0.13, 0.26, 0], 0.07, 2);
   box(rail, conveyor, [4.57, 0.09, 0.71], [0.13, 0.40, 0], 0.04);
   for (const z of [-0.44, 0.44]) {
-    box(rail, brass, [4.65, 0.12, 0.10], [0.13, 0.38, z], 0.039);
+    box(rail, copper, [4.65, 0.12, 0.10], [0.13, 0.38, z], 0.039);
     for (const x of [-2.03, -1.56, 1.39, 1.88, 2.23]) {
       const bolt = cylinder(rail, ivory, 0.042, 0.032, [x, 0.38, z * 1.13]);
       bolt.rotation.x = Math.PI / 2;
     }
   }
   for (const x of [-1.6, -1.20, 1.32, 1.72]) {
-    box(rail, brass, [0.017, 0.007, 0.52], [x, 0.448, 0], 0);
+    box(rail, copper, [0.017, 0.007, 0.52], [x, 0.448, 0], 0);
   }
 
   const engine = group(root, [-1.00, 0, -0.88], -0.04);
@@ -174,9 +182,12 @@ export function createWorkshopModel() {
     box(engine, dark, [1.72, 1.19, 0.42], [0, 0.84, z], 0.16, 3);
   }
   box(engine, dark, [1.72, 0.66, 1.68], [0, 1.66, 0], 0.20, 4);
-  box(engine, brass, [1.46, 0.077, 0.89], [0, 1.305, 0], 0.033);
+  box(engine, copper, [1.46, 0.077, 0.89], [0, 1.305, 0], 0.033);
   box(engine, cordLight, [1.24, 0.029, 0.17], [0, 1.255, 0], 0.012, 1);
-  const hubPlate = box(engine, brass, [0.68, 0.49, 0.048], [0, 1.68, 0.842], 0.024);
+  for (const z of [-0.46, -0.31, -0.16]) {
+    box(engine, copper, [0.36, 0.022, 0.034], [-0.36, 1.994, z], 0.009, 1);
+  }
+  const hubPlate = box(engine, copper, [0.68, 0.49, 0.048], [0, 1.68, 0.842], 0.024);
   hubPlate.castShadow = false;
   box(engine, dark, [0.61, 0.41, 0.053], [0, 1.68, 0.867], 0.026);
   const gearShape = new THREE.Shape();
@@ -192,7 +203,7 @@ export function createWorkshopModel() {
   gearHole.absarc(0, 0, 0.057, 0, 2 * Math.PI, true);
   gearShape.holes.push(gearHole);
   const gear = mesh(new THREE.ShapeGeometry(gearShape, 12), ivory, engine, [0, 1.68, 0.90]);
-  const hubSocket = cylinder(engine, brass, 0.17, 0.075, [0.25, 2.02, 0.07]);
+  const hubSocket = cylinder(engine, copper, 0.17, 0.075, [0.25, 2.02, 0.07]);
   hubSocket.castShadow = true;
   cylinder(engine, cordLight, 0.098, 0.03, [0.25, 2.067, 0.07]);
 
@@ -238,11 +249,11 @@ export function createWorkshopModel() {
   const bookedMark = badge(calendarScreen, 0.81, 0.46, 0.123, 0.102);
   bookedMark.scale.setScalar(0.82);
   for (const x of [-0.86, 0.86]) {
-    cylinder(calendar, brass, 0.078, 0.19, [x, 0.29, 0.14]);
+    cylinder(calendar, copper, 0.078, 0.19, [x, 0.29, 0.14]);
   }
 
   const envelopeStation = group(root, [3.45, 0, 0.46], -0.26);
-  plinth(envelopeStation, 1.92, 1.12, whiteStone);
+  plinth(envelopeStation, 1.92, 1.12, porcelain);
   const envelope = group(envelopeStation, [0, 0.84, -0.03]);
   box(envelope, glass, [1.72, 1.06, 0.19], [0, 0, 0], 0.092, 3);
   box(envelope, paper, [1.56, 0.92, 0.091], [0, 0, 0.04], 0.041, 3);
@@ -274,14 +285,14 @@ export function createWorkshopModel() {
     [1.16, 0.14, 1.23], [1.57, 0.13, 1.79], [2.10, 0.13, 2.12],
     [2.55, 0.19, 2.02],
   ]);
-  cylinder(root, brass, 0.18, 0.17, [1.15, 0.115, 1.23]);
+  cylinder(root, copper, 0.18, 0.17, [1.15, 0.115, 1.23]);
   cylinder(root, ivory, 0.095, 0.027, [1.15, 0.211, 1.23]);
-  cylinder(root, brass, 0.11, 0.12, [-0.82, 0.18, 1.64]);
+  cylinder(root, copper, 0.11, 0.12, [-0.82, 0.18, 1.64]);
   for (const point of [[2.66, 0.15, 0.43], [2.45, 0.15, 2.04]] as Point[]) {
-    const clip = cylinder(root, brass, 0.092, 0.21, point);
+    const clip = cylinder(root, copper, 0.092, 0.21, point);
     clip.rotation.z = Math.PI / 2;
   }
-  const signalMaterial = new THREE.MeshBasicMaterial({ color: "#ffbd75", toneMapped: false });
+  const signalMaterial = new THREE.MeshBasicMaterial({ color: "#ffd08b", toneMapped: false });
   materials.add(signalMaterial);
   const trailMaterial = matte("#ff6b28", { emissive: "#ff571a", emissiveIntensity: 1.15 });
   const pulseGeometry = new THREE.SphereGeometry(1, 12, 8);

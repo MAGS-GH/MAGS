@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
@@ -5,9 +6,9 @@ import { WorkshopStory } from "@/components/marketing/workshop-story";
 import { mailtoHref, siteConfig } from "@/lib/site-config";
 
 const services = [
-  ["Webapps", "Giv kunderne et sted at booke eller følge deres sag. Giv medarbejderne et værktøj, der passer til måden, de arbejder på."],
-  ["Integrationer", "Få f.eks. webshop, regnskab og kundeoverblik til at dele oplysninger, så samme ordre kun skal tastes én gang."],
-  ["Drift og cloud", "Få hjælp til hosting, overvågning, backup og opdateringer, så der er en plan, når noget går galt."],
+  ["Webapps", "Fra formularen i eksemplet til en kundeportal eller et internt værktøj. Jeg bygger en løsning, der passer til jeres måde at arbejde på.", "Kundeportaler og interne værktøjer"],
+  ["Integrationer", "Lad webshop, regnskab og kundeoverblik dele oplysninger. Når en ordre kommer ind, kan den gå videre til de rigtige steder automatisk.", "Data mellem jeres systemer"],
+  ["Drift og cloud", "Jeg hjælper med hosting, overvågning, backup og opdateringer, så I ved, hvem der tager fat, hvis noget går galt.", "Fra lancering til daglig drift"],
 ];
 
 export default function Home() {
@@ -16,15 +17,27 @@ export default function Home() {
       <SiteHeader />
       <main id="indhold" className="flex-1">
         <WorkshopStory />
-        <section id="ydelser" className="editorial-shell editorial-section">
-          <div className="section-intro">
-            <p className="editorial-kicker">Ydelser</p>
-            <h2>Det kan jeg hjælpe med</h2>
-          </div>
-          <div className="service-index">
-            {services.map(([title, description]) => (
-              <article key={title}><h3>{title}</h3><p>{description}</p></article>
-            ))}
+        <section id="ydelser" className="services-section">
+          <div className="editorial-shell editorial-section">
+            <div className="workshop-handoff">
+              <div className="section-intro">
+                <p className="editorial-kicker">Ydelser</p>
+                <h2>Få jeres systemer til at arbejde sammen</h2>
+                <p className="service-lead">Har I et trin, hvor nogen altid skal taste det samme igen eller huske at sende noget videre? Det er et godt sted at starte.</p>
+              </div>
+              <div className="handoff-image">
+                <Image src="/workshop/forbindelser.webp" alt="" fill sizes="(max-width: 790px) 100vw, 52vw" />
+              </div>
+            </div>
+            <div className="service-index">
+              {services.map(([title, description, example]) => (
+                <article key={title}>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                  <p className="service-example">{example}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -55,8 +68,8 @@ export default function Home() {
 
         <section id="kontakt" className="contact-band">
           <div className="editorial-shell editorial-section">
-            <h2>Hvad vil du gerne automatisere?</h2>
-            <p>Fortæl mig, hvad I bruger tid på i dag. På 30 minutter ser vi på, hvor det giver mening at starte.</p>
+            <h2>Hvad skal fylde mindre i jeres arbejdsdag?</h2>
+            <p>Tag én konkret arbejdsgang med til et gratis intromøde. På 30 minutter ser vi på, hvor det giver mening at starte.</p>
             <div className="contact-actions">
               <Link href={siteConfig.bookingUrl} className="primary-action">Book et gratis intromøde</Link>
               <a href={mailtoHref("Henvendelse fra mags.dk")} className="text-link">Skriv til {siteConfig.contactEmail}</a>

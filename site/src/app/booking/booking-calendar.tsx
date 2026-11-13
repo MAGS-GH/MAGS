@@ -53,9 +53,9 @@ function errorMessage(code: string, status: number) {
   return "Vi kunne ikke bekræfte bookingen lige nu. Kontrollér status igen, eller skriv til os.";
 }
 
-const outlineButton = "min-h-11 cursor-pointer rounded-lg border border-border px-3 py-2 text-sm font-semibold text-accent hover:border-accent disabled:cursor-default disabled:opacity-40";
-const solidButton = "primary-action min-h-11 cursor-pointer rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground disabled:cursor-default disabled:opacity-50";
-const inputClass = "mt-2 min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2";
+const outlineButton = "min-h-11 cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-accent hover:border-accent disabled:cursor-default disabled:opacity-40";
+const solidButton = "primary-action min-h-11 cursor-pointer disabled:cursor-default disabled:opacity-50";
+const inputClass = "mt-2 min-h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-base";
 
 export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string; fake: boolean; mailHref: string }) {
   const [availability, setAvailability] = useState<Availability>();
@@ -198,13 +198,13 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
   }
 
   return (
-    <section aria-labelledby="calendar-title" className="self-start rounded-2xl border border-border bg-card p-4 sm:p-8">
+    <section aria-labelledby="calendar-title" className="self-start rounded-2xl border border-border bg-card p-4 shadow-[0_18px_50px_-32px_var(--accent)] sm:p-8">
       {confirmed ? (
         <>
-          <h2 id="calendar-title" ref={confirmation} tabIndex={-1} className="font-display text-3xl">
+          <h2 id="calendar-title" ref={confirmation} tabIndex={-1} className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
             {fake ? "Testbooking gennemført" : "Dit møde er booket"}
           </h2>
-          <p className="mt-4 text-lg font-semibold">
+          <p className="mt-5 border-y border-border py-3 font-display text-xl font-semibold tracking-tight text-accent">
             <time dateTime={confirmed.start}>{dateFormat.format(new Date(confirmed.start))} kl. {timeLabel(confirmed)}</time>
           </p>
           <p className="mt-3 max-w-[48ch] leading-relaxed text-muted-foreground">
@@ -213,7 +213,7 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
         </>
       ) : (
         <>
-          <h2 id="calendar-title" className="font-display text-2xl sm:text-3xl">Vælg dato og tid</h2>
+          <h2 id="calendar-title" className="font-display text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">Vælg dato og tid</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Tider vises i dansk tid. Du kan booke mindst 24 timer før mødet.</p>
 
           {feedback && (
@@ -246,9 +246,9 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
             </p>
           ) : (
             <>
-              <div className="mt-5 flex items-center justify-between gap-2">
+              <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
                 <button type="button" aria-label="Forrige syv dage" onClick={() => moveDates(-1)} disabled={datePage === 0} className={outlineButton}>←</button>
-                <p aria-live="polite" className="text-center text-sm font-semibold">
+                <p aria-live="polite" className="text-center font-display text-lg leading-tight font-semibold">
                   {visibleDays.length > 0 && shortDateFormat.formatRange(atNoon(visibleDays[0].date), atNoon(visibleDays[visibleDays.length - 1].date))}
                 </p>
                 <button type="button" aria-label="Næste syv dage" onClick={() => moveDates(1)} disabled={(datePage + 1) * 7 >= days.length} className={outlineButton}>→</button>
@@ -261,7 +261,7 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
                     aria-label={`${dateFormat.format(atNoon(item.date))}${item.slots.length === 0 ? ", ingen ledige tider" : ""}`}
                     aria-pressed={day?.date === item.date}
                     disabled={item.slots.length === 0}
-                    className={`${outlineButton} px-1 text-center aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-accent-foreground`}
+                    className={`${outlineButton} min-h-[3.35rem] px-1 text-center aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-accent-foreground`}
                     onClick={() => {
                       setSelectedDay(item.date);
                       setSelectedStart("");
@@ -270,7 +270,7 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
                     }}
                   >
                     <span className="block text-xs font-normal">{weekdayFormat.format(atNoon(item.date))}</span>
-                    <span className="block">{atNoon(item.date).getUTCDate()}</span>
+                    <span className="mt-0.5 block font-display text-lg leading-none tabular-nums">{atNoon(item.date).getUTCDate()}</span>
                   </button>
                 ))}
               </div>
@@ -304,8 +304,8 @@ export function BookingCalendar({ siteKey, fake, mailHref }: { siteKey?: string;
               )}
 
               {slot && (
-                <form onSubmit={handleSubmit} className="mt-7 border-t border-border pt-5">
-                  <p className="text-sm font-semibold">Du har valgt {dateFormat.format(new Date(slot.start))} kl. {timeLabel(slot)}</p>
+                <form onSubmit={handleSubmit} className="mt-7 rounded-xl border border-border bg-background p-4 sm:p-5">
+                  <p className="font-display text-lg leading-tight font-semibold tracking-tight">Du har valgt {dateFormat.format(new Date(slot.start))} kl. {timeLabel(slot)}</p>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <label className="block text-sm font-semibold">
                       Dit navn

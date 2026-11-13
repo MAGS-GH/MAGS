@@ -38,7 +38,7 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
   });
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.16;
+  renderer.toneMappingExposure = 1.03;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
@@ -51,32 +51,37 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
   const generator = new THREE.PMREMGenerator(renderer);
   const environment = generator.fromScene(studio, 0.04);
   scene.environment = environment.texture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.47;
+  scene.environmentRotation.y = -Math.PI / 6;
   studio.dispose();
   generator.dispose();
 
-  const daylight = new THREE.DirectionalLight("#fff1e4", 2.85);
-  daylight.position.set(-5.5, 10, 3);
+  // Low window light gives the platform a long shadow; softer fill keeps the labels readable.
+  const daylight = new THREE.DirectionalLight("#ffdab9", 3.4);
+  daylight.position.set(-7.4, 6.7, 3.1);
   daylight.castShadow = true;
   daylight.shadow.mapSize.set(1024, 1024);
-  daylight.shadow.camera.left = -7;
-  daylight.shadow.camera.right = 7;
-  daylight.shadow.camera.top = 6;
-  daylight.shadow.camera.bottom = -6;
-  daylight.shadow.camera.far = 28;
-  daylight.shadow.bias = -0.00055;
-  daylight.shadow.normalBias = 0.045;
-  daylight.shadow.radius = 4;
-  const fill = new THREE.HemisphereLight("#fff7ed", "#a47969", 1.72);
-  const rim = new THREE.DirectionalLight("#ffe6d0", 1.40);
-  rim.position.set(4, 5, -6);
+  daylight.shadow.camera.left = -6.5;
+  daylight.shadow.camera.right = 6.5;
+  daylight.shadow.camera.top = 5.5;
+  daylight.shadow.camera.bottom = -5.5;
+  daylight.shadow.camera.near = 2;
+  daylight.shadow.camera.far = 20;
+  daylight.shadow.camera.updateProjectionMatrix();
+  daylight.shadow.bias = -0.0003;
+  daylight.shadow.normalBias = 0.035;
+  daylight.shadow.radius = 5.5;
+  daylight.shadow.intensity = 0.86;
+  const fill = new THREE.HemisphereLight("#fff5ee", "#956759", 1.2);
+  const rim = new THREE.DirectionalLight("#ffece2", 1.55);
+  rim.position.set(4, 5, -7);
   scene.add(daylight, fill, rim);
 
   const floorGeometry = new THREE.PlaneGeometry(160, 160);
-  const floorMaterial = new THREE.ShadowMaterial({ color: "#483225", opacity: 0.24 });
+  const floorMaterial = new THREE.ShadowMaterial({ color: "#4e2c24", opacity: 0.24, depthWrite: false });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.609;
+  floor.position.y = -0.550;
   floor.receiveShadow = true;
   scene.add(floor);
 
@@ -133,14 +138,16 @@ export function mountWorkshop(canvas: HTMLCanvasElement, onUnavailable: () => vo
     width = nextWidth;
     height = nextHeight;
     const pixelBudget = Math.sqrt(3_000_000 / (width * height));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelBudget, width < 500 ? 1 : 1.5));
-    renderer.setSize(width, height, false);
+    const pixelRatio = Math.min(window.devicePixelRatio, pixelBudget, width < 500 ? 1 : 1.5);
+    renderer.setDrawingBufferSize(width, height, pixelRatio);
     draw();
   }
 
   function render(nextProgress: number, nextOccupied: boolean) {
     if (disposed || contextLost) return;
-    progress = THREE.MathUtils.clamp(nextProgress, 0, 1);
+    const clampedProgress = THREE.MathUtils.clamp(nextProgress, 0, 1);
+    if (rendered && clampedProgress === progress && nextOccupied === occupied) return;
+    progress = clampedProgress;
     if (nextOccupied !== occupied) {
       occupied = nextOccupied;
       if (frame) cancelAnimationFrame(frame);

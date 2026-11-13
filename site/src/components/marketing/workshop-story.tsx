@@ -10,7 +10,7 @@ const chapters = [
     id: "forespoergsel",
     name: "Forespørgsel",
     progress: 0.22,
-    title: "En ny forespørgsel lander",
+    title: "Forespørgslen lander ét sted",
     description: "Kunden udfylder en formular. Oplysningerne går direkte videre, så ingen skal kopiere dem fra en mail.",
   },
   {
@@ -18,7 +18,7 @@ const chapters = [
     name: "Kundeoverblik",
     progress: 0.46,
     title: "Find kunden, opret sagen",
-    description: "Systemet genkender kunden og lægger forespørgslen på den rigtige sag. Alle arbejder videre med de samme oplysninger.",
+    description: "Systemet genkender kunden og opretter en sag med oplysningerne fra formularen. Medarbejderne kan gå i gang med det samme.",
   },
   {
     id: "aftale",
@@ -31,8 +31,8 @@ const chapters = [
     id: "opfoelgning",
     name: "Opfølgning",
     progress: 1,
-    title: "Send invitationen, og fordel arbejdet",
-    description: "Kunden får sin invitation, og den rette medarbejder får en opfølgningsopgave. De får hver især det, de skal bruge.",
+    title: "Alle får det, de skal bruge",
+    description: "Kunden får sin invitation. Medarbejderen får en opgave med de oplysninger, der er nødvendige for at følge op.",
   },
 ] as const;
 
@@ -96,6 +96,7 @@ export function WorkshopStory() {
       }
       progress.current = value;
       stageElement.dataset.progress = value.toFixed(3);
+      stageElement.style.setProperty("--workshop-progress", String(value));
       if (current - 1 !== activeRef.current) {
         activeRef.current = current - 1;
         setActive(current - 1);
@@ -221,6 +222,7 @@ export function WorkshopStory() {
               </a>
             ))}
           </nav>
+          <span className="workshop-progress" aria-hidden="true" />
           <button
             type="button"
             className="motion-toggle text-link"

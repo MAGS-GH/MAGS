@@ -1,8 +1,8 @@
 import { CanvasTexture, SRGBColorSpace } from "three";
 
-export const ink = "#29244e";
-const sand = "#e5d2b9";
-const linen = "#f7eee0";
+export const ink = "#32243c";
+const sand = "#e9d3c0";
+const linen = "#fbefe2";
 
 function createTexture(
   width: number,
@@ -54,22 +54,22 @@ function randomSource(seed: number) {
 
 export function workshopSurfaces() {
   const random = randomSource(7183);
-  const oak = createTexture(512, 256, (ctx) => {
+  const walnut = createTexture(512, 256, (ctx) => {
     const wash = ctx.createLinearGradient(0, 0, 0, 256);
-    wash.addColorStop(0, "#c69266");
-    wash.addColorStop(0.27, "#ab754b");
-    wash.addColorStop(0.62, "#c59060");
-    wash.addColorStop(1, "#a76e45");
+    wash.addColorStop(0, "#9c694e");
+    wash.addColorStop(0.27, "#79513c");
+    wash.addColorStop(0.62, "#ab7352");
+    wash.addColorStop(1, "#81543b");
     ctx.fillStyle = wash;
     ctx.fillRect(0, 0, 512, 256);
     for (let i = 0; i < 300; i++) {
       const y = random() * 256;
       const x = random() * 660 - 148;
       const length = 40 + random() * 550;
-      const bend = (random() - 0.5) * 13;
+      const bend = (random() - 0.5) * 19;
       ctx.strokeStyle = random() > 0.65
-        ? `rgba(245,200,151,${random() * 0.35})`
-        : `rgba(64,30,13,${random() * 0.25})`;
+        ? `rgba(243,193,148,${random() * 0.30})`
+        : `rgba(53,23,20,${random() * 0.32})`;
       ctx.lineWidth = 0.4 + random() * 2;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -78,7 +78,7 @@ export function workshopSurfaces() {
     }
   });
   const stone = createTexture(256, 256, (ctx) => {
-    ctx.fillStyle = "#f2e3cf";
+    ctx.fillStyle = "#f0dbca";
     ctx.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 12000; i++) {
       ctx.fillStyle = random() > 0.65
@@ -104,8 +104,8 @@ export function workshopSurfaces() {
     ctx.font = "500 22px Arial, sans-serif";
     ctx.fillText("Navn", 42, 195);
     ctx.fillText("Hvad skal vi hjælpe med?", 42, 286);
-    rect(ctx, 40, 210, 304, 43, 10, "#e8d8c4");
-    rect(ctx, 40, 302, 304, 53, 10, "#e8d8c4");
+    rect(ctx, 40, 210, 304, 43, 10, sand);
+    rect(ctx, 40, 302, 304, 53, 10, sand);
     rect(ctx, 40, 385, 304, 58, 13, ink);
     ctx.fillStyle = linen;
     ctx.font = "600 23px Arial, sans-serif";
@@ -118,7 +118,7 @@ export function workshopSurfaces() {
   });
   const caseFile = createTexture(384, 280, (ctx) => {
     rect(ctx, 1, 1, 382, 278, 29, linen);
-    rect(ctx, 25, 30, 64, 60, 14, "#ded4eb");
+    rect(ctx, 25, 30, 64, 60, 14, "#e6d1d9");
     ctx.fillStyle = ink;
     ctx.font = "600 31px Georgia, serif";
     ctx.fillText("Ny sag", 113, 70);
@@ -130,8 +130,8 @@ export function workshopSurfaces() {
     rect(ctx, 28, 193, 228, 14, 7, sand);
   });
   const customer = createTexture(384, 210, (ctx) => {
-    rect(ctx, 1, 1, 382, 208, 28, "#e9d8bf");
-    rect(ctx, 30, 37, 62, 58, 13, "#37305d");
+    rect(ctx, 1, 1, 382, 208, 28, "#f1dfca");
+    rect(ctx, 30, 37, 62, 58, 13, ink);
     ctx.fillStyle = "#f6eadb";
     ctx.beginPath();
     ctx.arc(61, 57, 9, 0, 2 * Math.PI);
@@ -178,7 +178,7 @@ export function workshopSurfaces() {
     ctx.fillText("Opfølgningsopgave", 32, 71);
     for (let row = 0; row < 2; row++) {
       const y = 116 + row * 62;
-      rect(ctx, 35, y, 32, 32, 5, "#dfd3e6");
+      rect(ctx, 35, y, 32, 32, 5, "#e6d1d9");
       rect(ctx, 86, y + 8, 260 - 45 * row, 13, 6, sand);
     }
     ctx.strokeStyle = ink;
@@ -187,7 +187,7 @@ export function workshopSurfaces() {
     polyline(ctx, [[42, 132], [50, 139], [63, 121]]);
   });
   return {
-    oak, stone, shadow, form, caseFile, customer, calendar, checklist,
+    walnut, stone, shadow, form, caseFile, customer, calendar, checklist,
     firstSlot: timeLabel("10.00"),
     secondSlot: timeLabel("10.30"),
   };
