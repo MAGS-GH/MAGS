@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { siteConfig } from "@/lib/site-config";
 import {
   formatSalonTime, salonCalendar, salonDays, treatments,
   type SalonDay, type StylistId, type TreatmentId,
@@ -234,7 +235,10 @@ export function SalonBookingStep({ chapter, booking }: { chapter: Chapter; booki
       <p className="salon-booking-note" role="status">{booking.confirmed && `Demoaftalen er lagt i ${calendarOwner} kalender.`}</p>
       <div className="salon-booking-actions">
         {booking.confirmed ? (
-          <a className="text-link" href="#behandling" onClick={booking.reset}>Prøv igen <span aria-hidden="true">↑</span></a>
+          <>
+            <a className="primary-action" href={siteConfig.salonDemoBookingUrl}>Prøv bookingplatformen</a>
+            <a className="text-link" href="#behandling" onClick={booking.reset}>Prøv igen <span aria-hidden="true">↑</span></a>
+          </>
         ) : (
           <>
             <button className="primary-action" type="button" onClick={booking.confirm}>Bekræft demoaftalen</button>

@@ -25,13 +25,14 @@ export default function SalonPage() {
       <main id="indhold" className="flex-1">
         <SectionScroll />
         <SalonStory />
-        <section className="salon-contact">
+        <section id="proev-bookingplatformen" className="salon-contact">
           <div className="editorial-shell editorial-section">
             <p className="editorial-kicker">Booking til din salon</p>
-            <h2>Hvordan booker kunderne hos jer?</h2>
-            <p>Fortæl om jeres behandlinger, medarbejdere og kalendere. Så ser vi på, hvordan et bookingflow kan passe ind i jeres hverdag.</p>
+            <h2>Book en tid i MAGS Demosalon</h2>
+            <p>Prøv selv at booke hos Freja, Noor eller Elias, som en kunde ville gøre. Brug fiktive kontaktoplysninger til din demoaftale.</p>
             <div className="contact-actions">
-              <Link href={siteConfig.bookingUrl} className="primary-action">Book et gratis intromøde</Link>
+              <a href={siteConfig.salonDemoBookingUrl} className="primary-action">Prøv bookingplatformen</a>
+              <Link href={siteConfig.bookingUrl} className="text-link">Book et gratis intromøde</Link>
               <Link href="/#ydelser" className="text-link">Se MAGS’ ydelser</Link>
             </div>
           </div>

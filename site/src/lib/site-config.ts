@@ -6,6 +6,7 @@ export const siteConfig = {
   ownerShort: "Mathias Gaardsdal Steenberg",
   domain: "https://mags.dk",
   bookingUrl: "/booking",
+  salonDemoBookingUrl: "https://book.mags.dk/s/mags-demosalon",
   contactEmail:
     process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "mags@mags.dk",
 } as const;
