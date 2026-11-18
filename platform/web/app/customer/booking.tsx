@@ -175,6 +175,10 @@ export function Booking({
     setStaffId(next.staffIds.length === 1 ? next.staffIds[0] : "");
     change(next.staffIds.length === 1 ? "details" : "staff");
   }
+  function chooseStylist(id: string) {
+    setStaffId(id);
+    change("details");
+  }
   async function confirm(e: FormEvent) {
     e.preventDefault();
     if (!slot || !service || busy.current) return;
@@ -285,7 +289,7 @@ export function Booking({
             </div>
           )}
         </aside>
-        <section className="booking-body">
+        <section className="booking-body" data-step={step}>
           <ol className="steps" aria-label="Bookingtrin">
             {steps.map((s, i) => (
               <li key={s} aria-current={s === step ? "step" : undefined}>
@@ -400,9 +404,10 @@ export function Booking({
                 </>
               )}
               {step === "staff" && slot && (
-                <>
-                  <p className="intro">
-                    {longDate(slot.start)} kl. {clock(slot.start)}
+                <div className="staff-picker">
+                  <p className="staff-context">
+                    <strong>{service?.name}</strong>
+                    <time dateTime={slot.start}>{longDate(slot.start)} kl. {clock(slot.start)}</time>
                   </p>
                   <div className="staff-list">
                     {salon.staff
@@ -411,26 +416,33 @@ export function Booking({
                         <button
                           key={s.id}
                           className="staff-card"
-                          onClick={() => {
-                            setStaffId(s.id);
-                            change("details");
-                          }}
+                          aria-current={staffId === s.id ? "true" : undefined}
+                          onClick={() => chooseStylist(s.id)}
                         >
-                          <Photo className="portrait" src={s.photoUrl} />
-                          <strong>{s.name}</strong>
+                          <span className="staff-photo" aria-hidden="true">
+                            <span>{Array.from(s.name.trim())[0]}</span>
+                            <Photo className="portrait" src={s.photoUrl} />
+                          </span>
+                          <span className="staff-caption">
+                            <strong>{s.name}</strong>
+                            <span className="staff-chevron" aria-hidden="true" />
+                          </span>
                         </button>
                       ))}
                   </div>
                   <button
-                    className="quiet"
-                    onClick={() => {
-                      setStaffId("");
-                      change("details");
-                    }}
+                    className="staff-any"
+                    aria-labelledby="staff-any-label"
+                    aria-describedby="staff-any-description"
+                    onClick={() => chooseStylist("")}
                   >
-                    Ingen præference
+                    <span>
+                      <strong id="staff-any-label">Ingen præference</strong>
+                      <span id="staff-any-description">Lad salonen vælge en ledig frisør til din tid.</span>
+                    </span>
+                    <span className="staff-chevron" aria-hidden="true" />
                   </button>
-                </>
+                </div>
               )}
               {step === "details" && slot && service && (
                 <form className="guest-form" onSubmit={confirm}>
