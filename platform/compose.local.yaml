@@ -1,0 +1,8 @@
+services:
+  salon-web:
+    ports:
+      - "127.0.0.1:${SALON_WEB_PORT:-3970}:3000"
+    networks: !override [default]
+    labels: !reset {}
+networks:
+  ingress: !reset null

@@ -1,0 +1,12 @@
+node_modules/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+.env*
+!.env.example
+bin/
+obj/
+TestResults/
+*.dump
+.local/
+.hallmark/

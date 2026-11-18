@@ -14,6 +14,8 @@ Til arbejde på forsiden uden Docker kan du køre `npm ci` og `npm run dev` i `s
 
 ## Produktion
 
+Den selvstændige salonplatform findes på [book.mags.dk](https://book.mags.dk/). [Drift af MAGS Booking](platform/README.md) beskriver oprettelse af saloner, ejeradgang, backup og installation.
+
 Dokploys **MAGS Homepage** følger `main` og bruger `compose.yaml`. Cloudflare Tunnel peger på marketingsidens lokale port. API og PostgreSQL har ingen værtsporte. Se [tunnelopsætningen](site/docs/CLOUDFLARE-TUNNEL.md) og [aktivering af Outlook-booking](site/docs/BOOKING.md).
 
 **MAGS Solutions** · CVR 46436490 · enkeltmandsvirksomhed.

@@ -1,0 +1,58 @@
+services:
+  salon-web:
+    build: ./web
+    restart: unless-stopped
+    environment:
+      SALON_API_URL: http://salon-api:8080
+      AUTH_CLIENT_ID: ${SALON_AUTH_CLIENT_ID:-mags-salon-booking}
+      AUTH_ISSUER: ${SALON_AUTH_ISSUER:-https://auth.mercantec.tech}
+    depends_on:
+      salon-api:
+        condition: service_healthy
+    networks: [default, ingress]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.mags-salon-book.rule: Host(`${SALON_HOST:-book.mags.dk}`)
+      traefik.http.routers.mags-salon-book.entrypoints: web
+      traefik.http.services.mags-salon-book.loadbalancer.server.port: "3000"
+  salon-api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Salon: Host=salon-db;Database=salon;Username=salon;Password=${SALON_DB_PASSWORD:?Set SALON_DB_PASSWORD}
+      Booking__LinkKey: ${SALON_LINK_KEY:?Set SALON_LINK_KEY}
+      Platform__AdminSubjects: ${SALON_ADMIN_SUBJECTS:?Set SALON_ADMIN_SUBJECTS}
+      Auth__Issuer: ${SALON_AUTH_ISSUER:-https://auth.mercantec.tech}
+      Auth__Audience: ${SALON_AUTH_AUDIENCE:-mercantec-apps}
+      Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics: Warning
+    depends_on:
+      salon-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "dotnet", "SalonPlatform.dll", "--healthcheck"]
+      interval: 15s
+      timeout: 6s
+      retries: 6
+      start_period: 25s
+  salon-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: salon
+      POSTGRES_USER: salon
+      POSTGRES_PASSWORD: ${SALON_DB_PASSWORD:?Set SALON_DB_PASSWORD}
+    volumes: [salon-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salon -d salon"]
+      interval: 6s
+      timeout: 4s
+      retries: 10
+networks:
+  default: {}
+  ingress:
+    external: true
+    name: dokploy-network
+volumes:
+  salon-data:

@@ -1,0 +1,102 @@
+// Run against the local API with local-issuer.mjs and a disposable PostgreSQL database.
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+
+const api = new URL(process.env.SALON_TEST_API || 'http://127.0.0.1:54931');
+const issuer = new URL(process.env.SALON_TEST_ISSUER || 'http://127.0.0.1:54930');
+for (const url of [api,issuer]) assert.ok(['localhost','127.0.0.1'].includes(url.hostname), 'This test creates fixture data on localhost only.');
+const token = async (role, invalid='') => {
+  const result = await fetch(new URL('/test-token?role='+role+'&invalid='+invalid,issuer),{method:'POST'});
+  assert.equal(result.status,200);
+  return (await result.json()).access_token;
+};
+const roles = ['admin','owner','reception','staff','other'];
+const sessions = Object.fromEntries(await Promise.all(roles.map(async role=>[role,await token(role)])));
+async function call(path,method='GET',role=null,body=undefined,expected=200) {
+  const headers = {};
+  if (role) headers.authorization = 'Bearer '+(sessions[role] ?? role);
+  if (body !== undefined) headers['content-type']='application/json';
+  const result = await fetch(new URL('/api'+path,api),{method,headers,body:JSON.stringify(body)});
+  const value = (await result.text()).trim();
+  assert.ok((Array.isArray(expected) ? expected : [expected]).includes(result.status),
+    method+' '+path+' returned '+result.status+' '+value.slice(0,190));
+  return value ? JSON.parse(value) : null;
+}
+
+await call('/me','GET',null,undefined,401);
+await call('/me','GET',await token('admin','audience'),undefined,401);
+await call('/me','GET',await token('admin','expired'),undefined,401);
+const [header,body,signature] = sessions.admin.split('.');
+await call('/me','GET',[header,body,(signature[0] === 'A' ? 'B' : 'A')+signature.slice(1)].join('.'),undefined,401);
+const me = await call('/me','GET','admin');
+assert.equal(me.admin,true);
+await call('/admin/salons','GET','owner',undefined,403);
+const suffix = randomUUID().slice(0,8);
+const createSalon = name => call('/admin/salons','POST','admin',{name,slug:name.toLowerCase()+'-'+suffix,address:'Prøvegade 7',phone:'70000001'},201);
+const first=await createSalon('Atelier'), other=await createSalon('Studio');
+await call('/admin/salons','POST','admin',{name:'Dublet',slug:first.slug},409);
+assert.equal(first.status,'draft');
+const salon = '/salons/'+first.id;
+const second = '/salons/'+other.id;
+await call(salon+'/setup','GET','other',undefined,403);
+await call(salon+'/publication','PUT','admin',{status:'published'},409);
+async function enroll(base,inviter,role,user,staffId=null) {
+  const invitation = await call(base+'/invites','POST',inviter,{role,staffId});
+  const joined = await call('/invitations/redeem','POST',user,{token:invitation.token});
+  assert.ok(base.endsWith(joined.salonId));
+  await call('/invitations/redeem','POST',user,{token:invitation.token},410);
+}
+await enroll(salon,'admin','owner','owner');
+await enroll(second,'admin','owner','other');
+await call(second+'/setup','GET','owner',undefined,403);
+await enroll(salon,'owner','reception','reception');
+await call(salon+'/invites','POST','reception',{role:'owner'},403);
+const deletedInvite = await call(salon+'/invites','POST','owner',{role:'reception'});
+await call(salon+'/invites/'+deletedInvite.id,'DELETE','owner',undefined,204);
+await call('/invitations/redeem','POST','other',{token:deletedInvite.token},410);
+const serviceForm={name:'Klipning',description:'Inklusive vask',durationMinutes:45,cleanupMinutes:15,priceOre:42500,active:true};
+const service=await call(salon+'/services','POST','owner',serviceForm);
+const alien=await call(second+'/services','POST','other',serviceForm);
+const shifts=Array.from({length:7},(_,i)=>({weekday:i+1,startMin:540,endMin:960}));
+const staffForm={name:'Emil',active:true,serviceIds:[service.id],shifts,exceptions:[]};
+await call(salon+'/staff','POST','owner',{...staffForm,serviceIds:[alien.id]},400);
+await call(salon+'/staff','POST','owner',{...staffForm,shifts:[shifts[0],shifts[0]]},400);
+const staff=await call(salon+'/staff','POST','owner',staffForm);
+const peer=await call(salon+'/staff','POST','owner',{...staffForm,name:'Sofie'});
+await enroll(salon,'owner','staff','staff',staff.id);
+const staffSetup=await call(salon+'/setup','GET','staff');
+assert.equal(staffSetup.members.length,0);
+assert.deepEqual(staffSetup.staff.map(s=>s.id),[staff.id]);
+await call(salon+'/settings','PUT','staff',{...first},403);
+await call(salon+'/services/'+alien.id,'PUT','owner',serviceForm,404);
+const setup=await call(salon+'/setup','GET','owner');
+assert.equal(setup.readiness.ready,true);
+assert.equal(setup.members.length,3);
+await call(salon+'/publication','PUT','owner',{status:'published'});
+await call(salon+'/settings','PUT','owner',{...setup.salon,address:''},400);
+const actualDate = new Intl.DateTimeFormat('sv-SE', { timeZone:'Europe/Copenhagen',year:'numeric',month:'2-digit',day:'numeric' }).format(new Date(Date.now()+3*86400000));
+const times=await call(salon+'/availability?serviceId='+service.id+'&from='+actualDate+'&days=1','GET','reception');
+const slot=times.days[0].slots[0];
+assert.ok(slot.staffIds.includes(staff.id) && slot.staffIds.includes(peer.id));
+const booking={serviceId:service.id,staffId:staff.id,start:slot.start,name:'Prøvekunde',phone:'70000002',requestId:randomUUID()};
+await call(salon+'/appointments','POST','reception',booking,[200,201]);
+const conflict=await call(salon+'/staff/'+staff.id,'PUT','owner',{...staffForm,exceptions:[{date:actualDate,startMin:null,endMin:null}]},409);
+assert.equal(conflict.affected[0].customerName,booking.name);
+assert.equal((await call(salon+'/setup','GET','owner')).staff.find(s=>s.id===staff.id).exceptions.length,0);
+await call(salon+'/publication','PUT','owner',{status:'paused'});
+const calendar=await call(salon+'/calendar?date='+actualDate,'GET','staff');
+assert.equal(calendar.appointments.length,1);
+await call(second+'/calendar?date='+actualDate,'GET','staff',undefined,403);
+await call(salon+'/export','GET','reception',undefined,403);
+const exported=await call(salon+'/export','GET','owner');
+assert.equal(exported.staff.length,2);
+assert.equal(exported.customers[0].name,booking.name);
+assert.ok(!JSON.stringify(exported).match(/token_hash|tokenHash|phone_key|request_hash|requestHash/));
+assert.ok((await call(salon+'/audit','GET','owner')).some(e=>e.action==='salon.exported'));
+const ownerSub=(await call('/me','GET','owner')).sub;
+const receptionSub=(await call('/me','GET','reception')).sub;
+await call(salon+'/members/'+ownerSub,'DELETE','owner',undefined,409);
+await call(salon+'/members/'+receptionSub,'DELETE','owner',undefined,204);
+await call(salon+'/calendar?date='+actualDate,'GET','reception',undefined,403);
+await call(salon+'/publication','PUT','owner',{status:'published'});
+console.log('PASS: signed JWT, two salons, four roles, single-use invitations, schedule conflicts, export, role revocation. Local salon:', first.slug, first.id);
