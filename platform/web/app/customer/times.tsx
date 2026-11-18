@@ -13,7 +13,7 @@ export function Times({
   initialDate,
 }: {
   days: Day[];
-  onSelect: (s: Slot) => void;
+  onSelect: (s: Slot, selectedAt: number) => void;
   onDayChange?: (date: string) => void;
   initialDate?: string;
 }) {
@@ -72,7 +72,7 @@ export function Times({
       </div>
       <div className="slot-grid">
         {day.slots.map((s) => (
-          <button type="button" key={s.start} onClick={() => onSelect(s)}>
+          <button type="button" key={s.start} onClick={() => onSelect(s, Date.now())}>
             {clock(s.start)}
           </button>
         ))}

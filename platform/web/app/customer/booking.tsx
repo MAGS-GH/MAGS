@@ -168,8 +168,8 @@ export function Booking({
     setError("");
     change("time");
   }
-  function chooseSlot(next: Slot) {
-    setSelectedAt(Date.now());
+  function chooseSlot(next: Slot, selectedAt: number) {
+    setSelectedAt(selectedAt);
     setSlot(next);
     setError("");
     setStaffId(next.staffIds.length === 1 ? next.staffIds[0] : "");
