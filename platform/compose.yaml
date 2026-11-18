@@ -50,7 +50,10 @@ services:
       timeout: 4s
       retries: 10
 networks:
-  default: {}
+  default:
+    ipam:
+      config:
+        - subnet: ${SALON_SUBNET:-10.42.96.0/28}
   ingress:
     external: true
     name: dokploy-network

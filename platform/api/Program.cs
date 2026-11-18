@@ -60,8 +60,8 @@ app.Use(async (context, next) =>
         };
         if (status == 500) app.Logger.LogError("Database/API failure {Type} {Code}", ex.GetType().Name, (ex as PostgresException)?.SqlState);
         context.Response.StatusCode = status;
-        if(ex is SalonError { Code: not null } coded)
-            await context.Response.WriteAsJsonAsync(new {error=message,code=coded.Code});
+        if (ex is SalonError { Code: not null } coded)
+            await context.Response.WriteAsJsonAsync(new { error = message, code = coded.Code });
         else await context.Response.WriteAsJsonAsync(new { error = message });
     }
 });
@@ -80,7 +80,7 @@ app.Run();
 
 namespace SalonPlatform
 {
-    public sealed class SalonError(int status, string message, string? code=null) : Exception(message)
+    public sealed class SalonError(int status, string message, string? code = null) : Exception(message)
     {
         public int Status { get; } = status;
         public string? Code { get; } = code;

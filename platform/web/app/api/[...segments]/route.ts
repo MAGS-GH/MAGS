@@ -1,4 +1,4 @@
-import { isIP } from "node:net";
+import { visitorHeaders } from "../../../lib/upstream";
 type Context = { params: Promise<{ segments: string[] }> };
 const noStore = {
   "Cache-Control": "no-store",
@@ -25,13 +25,11 @@ async function proxy(req: Request, ctx: Context) {
   const limit = 5 * 1024 * 1024;
   if (Number(req.headers.get("Content-Length")) > limit)
     return error(413, "Filen er for stor.");
-  const headers = new Headers();
+  const headers = visitorHeaders(req.headers);
   for (const h of ["Content-Type", "Authorization", "Accept"]) {
     const v = req.headers.get(h);
     if (v) headers.set(h, v);
   }
-  const ip = req.headers.get("CF-Connecting-IP");
-  if (ip && isIP(ip)) headers.set("X-Real-IP", ip);
   try {
     const upstream = new URL(
       "/api/" + bits.join("/"),

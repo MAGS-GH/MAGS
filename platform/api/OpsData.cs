@@ -69,7 +69,6 @@ internal static class OpsData
         if (url.Length == 0) return url;
         var prefix = $"/api/media/{salon}/";
         if (url.StartsWith(prefix, StringComparison.Ordinal) && Guid.TryParseExact(url[prefix.Length..],"D",out _)) return url;
-        if (Uri.TryCreate(url,UriKind.Absolute,out var uri) && uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)) return uri.AbsoluteUri;
-        throw new SalonError(400,"Vælg et uploadet billede eller en gyldig HTTPS-billedadresse.");
+        throw new SalonError(400,"Vælg et billede, som er uploadet til salonen.");
     }
 }

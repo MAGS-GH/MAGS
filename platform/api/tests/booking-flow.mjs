@@ -7,7 +7,6 @@ const issuer = new URL(process.env.SALON_TEST_ISSUER || 'http://127.0.0.1:54930'
 for (const url of [base, issuer]) assert.ok(['localhost','127.0.0.1'].includes(url.hostname));
 const jwt = (await (await fetch(new URL('/test-token?role=admin',issuer),{method:'POST'})).json()).access_token;
 const dateString = date => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Copenhagen'}).format(date);
-const day = dateString(new Date(Date.now()+4*86400000));
 const slug = 'bookingtest-'+randomUUID().slice(0,8);
 const headers = {'content-type':'application/json'};
 // Simulate an independently forwarded visitor IP per test run on the private API.
@@ -28,16 +27,18 @@ await admin(desk+'/settings',{...initial,horizonDays:365},200,'PUT');
 const serviceForm={name:'Klip',description:'',priceOre:45000,durationMinutes:45,cleanupMinutes:15,active:true};
 const service=await admin(desk+'/services',serviceForm);
 const shifts=Array.from({length:7},(_,i)=>({weekday:i+1,startMin:540,endMin:960}));
-// Make the next daylight-saving discontinuity bookable to exercise actual UTC durations.
+// Make both upcoming daylight-saving discontinuities bookable to exercise actual UTC durations.
 const clock = instant => new Intl.DateTimeFormat('da-DK',{timeZone:'Europe/Copenhagen',hour:'2-digit'}).format(instant);
-let transition;
-for(let i=5;i<=364;i++){
+const transitions=[];
+for(let i=1;i<=365;i++){
   const date=new Date(Date.now()+i*86400000);
   const noon=new Date(dateString(date)+'T12:00:00Z');
-  if(clock(noon)!==clock(new Date(noon.getTime()-86400000))){transition=dateString(date);break;}
+  if(clock(noon)!==clock(new Date(noon.getTime()-86400000))) transitions.push(dateString(date));
 }
-assert.ok(transition);
-const employee={name:'Frisør A',active:true,serviceIds:[service.id],shifts,exceptions:[{date:transition,startMin:60,endMin:300}]};
+assert.ok(transitions.length>=1);
+let day=dateString(new Date(Date.now()+4*86400000));
+if(transitions.includes(day)) day=dateString(new Date(Date.now()+5*86400000));
+const employee={name:'Frisør A',active:true,serviceIds:[service.id],shifts,exceptions:transitions.map(date=>({date,startMin:60,endMin:300}))};
 const first=await admin(desk+'/staff',employee);
 const second=await admin(desk+'/staff',{...employee,name:'Frisør B'});
 await admin(desk+'/publication',{status:'published'},200,'PUT');
@@ -48,10 +49,12 @@ const availability=(d=day) => request(shop+'/availability?serviceId='+service.id
 const opts=(await availability()).days[0].slots;
 assert.deepEqual(new Set(opts[0].staffIds),new Set([first.id,second.id]));
 assert.equal(opts.length,25); // 09:00 to 15:00 inclusive, with customer plus cleanup fitting by 16:00.
-const dst=(await availability(transition)).days[0].slots;
-const summer=clock(new Date(transition+'T12:00:00Z'))==='14';
-assert.equal(dst.length,summer?9:17);
-for(const slot of dst) assert.equal(Date.parse(slot.end)-Date.parse(slot.start),45*60000);
+for(const transition of transitions){
+  const dst=(await availability(transition)).days[0].slots;
+  const summer=clock(new Date(transition+'T12:00:00Z'))==='14';
+  assert.equal(dst.length,summer?9:17);
+  for(const slot of dst) assert.equal(Date.parse(slot.end)-Date.parse(slot.start),45*60000);
+}
 
 const create=(start,overrides={})=>({serviceId:service.id,staffId:first.id,start,name:'Ida Eksempel',phone:'70000004',requestId:randomUUID(),
   expectedPriceMinor:45000,expectedDurationMinutes:45,...overrides});

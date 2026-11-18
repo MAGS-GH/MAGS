@@ -12,7 +12,7 @@ internal static class Pg
     }
 
     public static async Task<List<T>> Query<T>(NpgsqlConnection db, NpgsqlTransaction? tx, string sql,
-        Func<NpgsqlDataReader,T> map, params (string,object?)[] args)
+        Func<NpgsqlDataReader, T> map, params (string, object?)[] args)
     {
         await using var cmd = Cmd(db, tx, sql, args);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -21,7 +21,7 @@ internal static class Pg
         return rows;
     }
 
-    public static async Task Exec(NpgsqlConnection db,NpgsqlTransaction? tx,string sql,params (string,object?)[] args)
+    public static async Task Exec(NpgsqlConnection db, NpgsqlTransaction? tx, string sql, params (string, object?)[] args)
     {
         await using var cmd = Cmd(db, tx, sql, args);
         await cmd.ExecuteNonQueryAsync();
@@ -35,15 +35,15 @@ internal static class Pg
     {
         await using var db = await ds.OpenConnectionAsync();
         await using var tx = await db.BeginTransactionAsync();
-        await Exec(db,tx,"SELECT pg_advisory_xact_lock(279846215); CREATE TABLE IF NOT EXISTS salon_schema_history (filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
+        await Exec(db, tx, "SELECT pg_advisory_xact_lock(279846215); CREATE TABLE IF NOT EXISTS salon_schema_history (filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
         var assembly = Assembly.GetExecutingAssembly();
         foreach (var name in assembly.GetManifestResourceNames().Where(n => n.EndsWith(".sql")).Order(StringComparer.Ordinal))
         {
-            await using var exists = Cmd(db,tx,"SELECT 1 FROM salon_schema_history WHERE filename=@name",("name",name));
+            await using var exists = Cmd(db, tx, "SELECT 1 FROM salon_schema_history WHERE filename=@name", ("name", name));
             if (await exists.ExecuteScalarAsync() != null) continue;
             using var reader = new StreamReader(assembly.GetManifestResourceStream(name)!);
-            await Exec(db,tx,await reader.ReadToEndAsync());
-            await Exec(db,tx,"INSERT INTO salon_schema_history(filename) VALUES (@name)",("name",name));
+            await Exec(db, tx, await reader.ReadToEndAsync());
+            await Exec(db, tx, "INSERT INTO salon_schema_history(filename) VALUES (@name)", ("name", name));
         }
         await tx.CommitAsync();
     }

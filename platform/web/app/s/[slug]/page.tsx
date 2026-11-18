@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { visitorHeaders } from "../../../lib/upstream";
 import { Booking, Preview } from "../../customer/booking";
 import type { Salon } from "../../../lib/booking";
 export const dynamic = "force-dynamic";
@@ -21,7 +23,11 @@ export default async function SalonPage({
       "/api/public/salons/" + slug,
       process.env.SALON_API_URL || "http://salon-api:8080",
     ),
-    { cache: "no-store", signal: AbortSignal.timeout(12000) },
+    {
+      cache: "no-store",
+      headers: visitorHeaders(await headers()),
+      signal: AbortSignal.timeout(12000),
+    },
   ).catch(() => null);
   if (response?.status === 404) notFound();
   if (!response?.ok)

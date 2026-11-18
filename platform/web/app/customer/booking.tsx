@@ -108,6 +108,8 @@ export function Booking({
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("service");
+  const [viewedDate, setViewedDate] = useState("");
+  const [selectedAt, setSelectedAt] = useState(0);
   const [service, setService] = useState<Service>();
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [slot, setSlot] = useState<Slot>();
@@ -156,6 +158,7 @@ export function Booking({
     requestAnimationFrame(() => title.current?.focus({ preventScroll: false }));
   }
   function chooseService(next: Service) {
+    setViewedDate("");
     setService(next);
     setSlot(undefined);
     setStaffId("");
@@ -166,6 +169,7 @@ export function Booking({
     change("time");
   }
   function chooseSlot(next: Slot) {
+    setSelectedAt(Date.now());
     setSlot(next);
     setError("");
     setStaffId(next.staffIds.length === 1 ? next.staffIds[0] : "");
@@ -204,10 +208,12 @@ export function Booking({
         setService(undefined);
         setSlot(undefined);
         setStaffId("");
-        key.current = {signature:"",id:""};
+        key.current = { signature: "", id: "" };
         router.refresh();
         change("service");
-        setError("Salonen har opdateret behandlingen. Gennemse den nye pris og varighed.");
+        setError(
+          "Salonen har opdateret behandlingen. Gennemse den nye pris og varighed.",
+        );
       } else if (e instanceof ApiError && e.status === 409) {
         setSlot(undefined);
         setAvailability(null);
@@ -372,7 +378,16 @@ export function Booking({
                     </div>
                   ) : availability ? (
                     <>
-                      <Times days={availability.days} onSelect={chooseSlot} />
+                      <Times
+                        days={availability.days}
+                        initialDate={viewedDate}
+                        onSelect={chooseSlot}
+                        onDayChange={(date) => {
+                          setViewedDate(date);
+                          setSlot(undefined);
+                          setStaffId("");
+                        }}
+                      />
                       {!availability.days.length && (
                         <a href={"tel:" + salon.phone}>
                           Kontakt salonen på {salon.phone}
@@ -456,11 +471,13 @@ export function Booking({
                   <p className="fine">
                     Du betaler i salonen.{" "}
                     {cutoff &&
-                      "Online ændringer er mulige indtil " +
-                        longDate(cutoff) +
-                        " kl. " +
-                        clock(cutoff) +
-                        "."}{" "}
+                      (Date.parse(cutoff) <= selectedAt
+                        ? "Tiden ligger inden for ændringsfristen. Ring til salonen, hvis du får brug for at ændre den."
+                        : "Online ændringer er mulige indtil " +
+                          longDate(cutoff) +
+                          " kl. " +
+                          clock(cutoff) +
+                          ".")}{" "}
                     Gem dit private aftalelink på næste side.
                   </p>
                   <button className="primary" disabled={sending}>

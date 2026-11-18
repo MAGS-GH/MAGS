@@ -10,18 +10,20 @@ export function Times({
   days,
   onSelect,
   onDayChange,
+  initialDate,
 }: {
   days: Day[];
   onSelect: (s: Slot) => void;
-  onDayChange?: () => void;
+  onDayChange?: (date: string) => void;
+  initialDate?: string;
 }) {
-  const [date, setDate] = useState(days[0]?.date || "");
+  const [date, setDate] = useState(initialDate || days[0]?.date || "");
   const labelId = useId();
   const day = days.find((d) => d.date === date) ?? days[0];
   function changeDate(next: string) {
     if (next !== day?.date) {
       setDate(next);
-      onDayChange?.();
+      onDayChange?.(next);
     }
   }
   if (!day)
